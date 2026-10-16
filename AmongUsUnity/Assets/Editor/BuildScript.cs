@@ -11,6 +11,9 @@ public static class BuildScript
 
     static void Prepare()
     {
+        AssetDatabase.Refresh();
+        PlayerPrefabBuilder.Build();
+        UiCatalogBuilder.Build();
         Directory.CreateDirectory("Assets/Scenes");
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var cam = new GameObject("Main Camera") { tag = "MainCamera" };

@@ -21,6 +21,7 @@ namespace AmongUsLan
         public GameObject Go;
         public SpriteRenderer Renderer;
         public Rigidbody2D Body;
+        public PlayerVisual Visual;
         public readonly List<GameTask> Tasks = new List<GameTask>();   // host: authoritative copy
         public int Vote = -2;           // -2 none, -1 skip, otherwise player id
         public bool UsedButton;
@@ -30,12 +31,12 @@ namespace AmongUsLan
     /// Host-authoritative Among Us over LAN. Host is player id 0 and runs the rules; clients send commands
     /// (POS/KILL/TASK/REPORT/VOTE) and mirror the events the host broadcasts. The world is the original Skeld.
     /// </summary>
-    public class Game : MonoBehaviour
+    public partial class Game : MonoBehaviour
     {
         // ---- tuning (original Player prefab / default game settings) ----
         const float MoveSpeed = 2.5f, KillRange = 1.8f, ReportRange = 1.5f;
-        const float BodyColliderRadius = 0.156f, BodyColliderOffsetY = -0.255f;
-        const float TaskHoldSeconds = 1.0f, MeetingSeconds = 45f, ResultSeconds = 6f, NetRate = 1f / 15f;
+        const float BodyColliderRadius = 0.2233912f, BodyColliderOffsetY = -0.3636f;   // root-local (root scale 0.7)
+        const float TaskHoldSeconds = 1.0f, MeetingSeconds = 45f, ResultSeconds = 11.5f, NetRate = 1f / 15f;
         const int CommonTasks = 1, ShortTasks = 2, LongTasks = 1;
 
         // ---- state ----
@@ -69,12 +70,15 @@ namespace AmongUsLan
         readonly Dictionary<string, AudioClip> _clips = new Dictionary<string, AudioClip>();
         float _stepTimer;
         Texture2D _white;
+        FogOfWar _fog;
+        const float CrewVision = 3.5f, ImpostorVision = 5.25f;
 
         // bot / automated testing (command-line driven)
         bool _bot, _autoHost, _autoJoin, _botTeleport;
         float _botDirTimer;
         Vector2 _botDir;
         float _autoTimer;
+        bool _meetDone;
         string _shotPath;
         float _shotAt;
 
@@ -110,6 +114,10 @@ namespace AmongUsLan
             _audio = gameObject.AddComponent<AudioSource>();
             foreach (var c in Resources.LoadAll<AudioClip>("Audio")) _clips[c.name] = c;
             _white = Texture2D.whiteTexture;
+            Physics2D.queriesStartInColliders = false;
+            Physics2D.queriesHitTriggers = false;
+            _fog = FogOfWar.Create(_cam);
+            BuildHud();
 
             var args = Environment.GetCommandLineArgs();
             _bot = args.Contains("-bot");
@@ -206,9 +214,11 @@ namespace AmongUsLan
         void EnsureAvatar(PlayerInfo p)
         {
             if (p.Go != null) return;
-            p.Go = new GameObject("Player " + p.Name);
-            p.Renderer = p.Go.AddComponent<SpriteRenderer>();
-            p.Renderer.sprite = PlayerArt.Get(p.Color);
+            p.Go = Instantiate(Resources.Load<GameObject>("Player"));
+            p.Go.name = "Player " + p.Name;
+            p.Visual = p.Go.GetComponent<PlayerVisual>();
+            p.Renderer = p.Visual.Body;
+            p.Visual.SetColor(Palette.Body(p.Color), Palette.Shade(p.Color), Palette.Visor);
             if (p.Id == _myId)
             {
                 p.Body = p.Go.AddComponent<Rigidbody2D>();
@@ -386,7 +396,8 @@ namespace AmongUsLan
                 e.Alive = false;
             }
             int impLeft = _players.Values.Count(x => x.Impostor && x.Alive);
-            Emit("RESULT|" + eject + "|" + (wasImp ? 1 : 0) + "|" + impLeft);
+            string votes = string.Join(";", _players.Values.Where(x => x.Vote != -2).Select(x => x.Id + ">" + x.Vote));
+            Emit("RESULT|" + eject + "|" + (wasImp ? 1 : 0) + "|" + impLeft + "|" + votes);
         }
 
         // Returns true when the game ended.
@@ -476,6 +487,7 @@ namespace AmongUsLan
                     if (_me != null && _me.Body != null) _me.Body.linearVelocity = Vector2.zero;
                     _taskHold = 0;
                     SetPhase(Phase.Meeting);
+                    ShowMeeting();
                     Play(_meetingBody >= 0 ? "Report_BodyFound" : "alarm_emergencymeeting");
                     break;
                 case "VOTED":
@@ -494,11 +506,24 @@ namespace AmongUsLan
                         else _resultText = "Nadie fue expulsado.";
                         if (_impostorCount > 0) _resultText += "\n" + impLeft + (impLeft == 1 ? " Impostor queda." : " Impostores quedan.");
                         _resultTimer = ResultSeconds;
+                        _voteMap.Clear();
+                        if (a.Length > 4)
+                            foreach (var v in a[4].Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                var vv = v.Split('>');
+                                int voter = int.Parse(vv[0]), target = int.Parse(vv[1]);
+                                if (!_voteMap.TryGetValue(target, out var lst)) _voteMap[target] = lst = new List<int>();
+                                lst.Add(voter);
+                            }
+                        _ejectId = eject;
+                        _resultStage = 0; _stageClock = 0;
                         SetPhase(Phase.Result);
+                        RevealVotes();
                         Play("EjectSplash");
                         break;
                     }
                 case "RESUME":
+                    HideMeeting();
                     ResetPositions();
                     _killCd = Mathf.Max(_killCd, 10f);
                     SetPhase(Phase.Playing);
@@ -507,10 +532,12 @@ namespace AmongUsLan
                     _endWinner = int.Parse(a[1]);
                     Debug.Log("[LAN] END winner=" + (_endWinner == 0 ? "crew" : "impostors"));
                     _endImpostors = a.Length > 2 ? a[2] : "";
+                    HideMeeting();
                     _endText = _endWinner == 0 ? "¡Ganan los Tripulantes!" : "¡Ganan los Impostores!";
                     SetPhase(Phase.Ended);
                     break;
                 case "LOBBYBACK":
+                    HideMeeting();
                     ClearRound();
                     SetPhase(Phase.Lobby);
                     break;
@@ -528,8 +555,8 @@ namespace AmongUsLan
                 if (!_players.TryGetValue(id, out var p)) p = AddPlayer(id, f[1], int.Parse(f[2]));
                 p.Name = f[1];
                 int col = int.Parse(f[2]);
-                if (p.Color != col && p.Renderer != null) p.Renderer.sprite = PlayerArt.Get(col);
                 p.Color = col;
+                if (p.Visual != null) p.Visual.SetColor(Palette.Body(col), Palette.Shade(col), Palette.Visor);
             }
             foreach (var id in _players.Keys.Where(i => !seen.Contains(i)).ToList())
             {
@@ -594,13 +621,19 @@ namespace AmongUsLan
         {
             if (_bodies.ContainsKey(owner)) Destroy(_bodies[owner]);
             var p = Get(owner);
-            var go = new GameObject("Body " + owner);
-            go.transform.position = pos;
-            go.transform.rotation = Quaternion.Euler(0, 0, 90);
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = PlayerArt.Get(p != null ? p.Color : 0);
-            sr.color = new Color(0.8f, 0.8f, 0.8f);
-            sr.sortingOrder = 50;
+            var go = Instantiate(Resources.Load<GameObject>("DeadBody"));
+            go.name = "Body " + owner;
+            go.transform.position = new Vector3(pos.x, pos.y, 0);
+            int ci = p != null ? p.Color : 0;
+            var block = new MaterialPropertyBlock();
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                r.GetPropertyBlock(block);
+                block.SetColor("_BodyColor", Palette.Body(ci));
+                block.SetColor("_BackColor", Palette.Shade(ci));
+                block.SetColor("_VisorColor", Palette.Visor);
+                r.SetPropertyBlock(block);
+            }
             _bodies[owner] = go;
         }
 
@@ -624,7 +657,17 @@ namespace AmongUsLan
             if (_phase == Phase.Result && !_isHost) _resultTimer -= Time.deltaTime;
 
             UpdateHighlights();
+            UpdateFog();
+            UpdateHud();
+            UpdateMeetingUi();
             FollowCamera();
+        }
+
+        void UpdateFog()
+        {
+            _fog.Active = _phase == Phase.Playing && _me != null && _me.Alive;
+            _fog.Target = _me != null ? _me.Go.transform : null;
+            _fog.Radius = _me != null && _me.Impostor ? ImpostorVision : CrewVision;
         }
 
         // Task consoles are outlined yellow; the one in reach turns white (as in the original).
@@ -737,8 +780,8 @@ namespace AmongUsLan
             bool visible = _phase != Phase.Menu && (p.Alive || (_me != null && !_me.Alive));
             if (_phase == Phase.Meeting || _phase == Phase.Result) visible = false;
             p.Renderer.enabled = visible;
-            p.Renderer.flipX = p.Flip;
-            p.Renderer.color = p.Alive ? Color.white : new Color(1, 1, 1, 0.45f);
+            p.Visual.SetState(p.Moving && p.Alive || p.Moving, !p.Alive, p.Flip);
+            p.Renderer.color = p.Alive ? Color.white : new Color(1, 1, 1, 0.55f);
             p.Renderer.sortingOrder = 100 - Mathf.RoundToInt(p.Go.transform.position.y * 10f);
             if (p.Id == _myId)
             {
@@ -754,8 +797,6 @@ namespace AmongUsLan
                 p.Pos = Vector2.Lerp(p.Pos, p.TargetPos, 1f - Mathf.Exp(-14f * Time.deltaTime));
                 p.Go.transform.position = p.Pos;
             }
-            float bob = p.Moving && p.Alive ? Mathf.Abs(Mathf.Sin(Time.time * 12f)) * 0.06f : 0f;
-            p.Renderer.transform.localScale = new Vector3(1f, 1f + bob, 1f);
         }
 
         // ---- tasks ----
@@ -820,19 +861,32 @@ namespace AmongUsLan
                                   .Select(kv => (int?)kv.Key).FirstOrDefault();
                 if (body.HasValue) Cmd("REPORT|" + body.Value);
             }
-            if (_me.Alive && Input.GetKeyDown(KeyCode.F) && Vector2.Distance(WorldMap.EmergencyButtonPos, _me.Pos) <= WorldMap.EmergencyButtonRange)
-                Cmd("REPORT|-1");
+            if (Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Space) || (_bot && _taskRunning < 0)) UseNearest();
+            UpdateTaskProgress();
+        }
 
+        // ---- use button: nearest task console, otherwise the emergency button ----
+
+        int _taskRunning = -1;
+
+        public void UseNearest()
+        {
+            if (_phase != Phase.Playing || _me == null || _taskRunning >= 0) return;
             if (!_me.Impostor)
             {
                 int idx = NearestTask(out _);
-                if (idx >= 0 && (Input.GetKey(KeyCode.E) || Input.GetKey(KeyCode.Space) || _bot))
-                {
-                    _taskHold += Time.deltaTime;
-                    if (_taskHold >= TaskHoldSeconds) { _taskHold = 0; Cmd("TASK|" + idx); }
-                }
-                else _taskHold = 0;
+                if (idx >= 0) { _taskRunning = idx; _taskHold = 0; return; }
             }
+            if (_me.Alive && !_me.UsedButton && Vector2.Distance(WorldMap.EmergencyButtonPos, _me.Pos) <= WorldMap.EmergencyButtonRange)
+                Cmd("REPORT|-1");
+        }
+
+        void UpdateTaskProgress()
+        {
+            if (_taskRunning < 0) return;
+            if (_me == null || _phase != Phase.Playing || NearestTask(out _) != _taskRunning) { _taskRunning = -1; _taskHold = 0; return; }
+            _taskHold += Time.deltaTime;
+            if (_taskHold >= TaskHoldSeconds) { Cmd("TASK|" + _taskRunning); _taskRunning = -1; _taskHold = 0; }
         }
 
         PlayerInfo NearestPlayer(float range, Func<PlayerInfo, bool> filter)
@@ -899,11 +953,13 @@ namespace AmongUsLan
             _autoTimer += Time.deltaTime;
             if (_phase == Phase.Menu && _autoHost && _autoTimer > 0.5f) HostGame();
             if (_phase == Phase.Menu && _autoJoin && _peer == null && _autoTimer > 2f) { _autoTimer = 1f; JoinGame(_ipField); }
+            if (_isHost && _autoHost && _phase == Phase.Lobby && Environment.GetCommandLineArgs().Contains("-solo") && _autoTimer > 2f) HostStartGame();
             if (_isHost && _autoHost && _phase == Phase.Lobby && _players.Count >= (Environment.GetCommandLineArgs().Contains("-four") ? 4 : 2) && _autoTimer > 8f) HostStartGame();
+            if (_phase == Phase.Playing && Environment.GetCommandLineArgs().Contains("-meet") && _autoTimer > 4f && !_meetDone) { _meetDone = true; Cmd("REPORT|-1"); }
             if (_bot && _phase == Phase.Meeting && _me != null && _me.Alive && _myVote == -2)
             {
-                _myVote = -1;
-                Cmd("VOTE|-1");
+                _myVote = Environment.GetCommandLineArgs().Contains("-voteself") ? _myId : -1;
+                Cmd("VOTE|" + _myVote);
             }
         }
 
@@ -935,9 +991,6 @@ namespace AmongUsLan
             {
                 case Phase.Menu: DrawMenu(W, H); break;
                 case Phase.Lobby: DrawLobby(W, H); break;
-                case Phase.Playing: DrawHud(W, H); break;
-                case Phase.Meeting: DrawMeeting(W, H); break;
-                case Phase.Result: DrawResult(W, H); break;
                 case Phase.Ended: DrawEnd(W, H); break;
             }
         }
