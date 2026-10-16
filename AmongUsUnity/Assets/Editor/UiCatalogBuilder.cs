@@ -31,3 +31,37 @@ public static class UiCatalogBuilder
         AssetDatabase.SaveAssets();
     }
 }
+
+/// <summary>Builds Resources/PrefabCatalog.asset from Assets/Editor/prefabs.txt (prefabs in Assets/Original/GameObject).</summary>
+public static class PrefabCatalogBuilder
+{
+    public static void Build()
+    {
+        Directory.CreateDirectory("Assets/Resources");
+        var names = new List<string>();
+        var prefabs = new List<GameObject>();
+        foreach (var raw in File.ReadAllLines("Assets/Editor/prefabs.txt"))
+        {
+            var n = raw.Trim();
+            if (n.Length == 0) continue;
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Original/GameObject/" + n + ".prefab");
+            if (src == null) { Debug.LogWarning("PrefabCatalog: prefab not found " + n); continue; }
+            // Strip the behaviours whose scripts were not recovered, keep the bound ones, save into Resources.
+            var inst = (GameObject)Object.Instantiate(src);
+            foreach (var t in inst.GetComponentsInChildren<Transform>(true))
+                GameObjectUtility.RemoveMonoBehavioursWithMissingScript(t.gameObject);
+            Directory.CreateDirectory("Assets/Resources/Minigames");
+            var saved = PrefabUtility.SaveAsPrefabAsset(inst, "Assets/Resources/Minigames/" + n + ".prefab");
+            Object.DestroyImmediate(inst);
+            names.Add(n);
+            prefabs.Add(saved);
+        }
+        const string path = "Assets/Resources/PrefabCatalog.asset";
+        var cat = AssetDatabase.LoadAssetAtPath<PrefabCatalog>(path);
+        if (cat == null) { cat = ScriptableObject.CreateInstance<PrefabCatalog>(); AssetDatabase.CreateAsset(cat, path); }
+        cat.Names = names.ToArray();
+        cat.Prefabs = prefabs.ToArray();
+        EditorUtility.SetDirty(cat);
+        AssetDatabase.SaveAssets();
+    }
+}

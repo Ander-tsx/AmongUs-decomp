@@ -78,7 +78,7 @@ namespace AmongUsLan
         float _botDirTimer;
         Vector2 _botDir;
         float _autoTimer;
-        bool _meetDone;
+        bool _meetDone, _mgOpened;
         string _shotPath;
         float _shotAt;
 
@@ -486,6 +486,7 @@ namespace AmongUsLan
                     foreach (var p in _players.Values) p.Vote = -2;
                     if (_me != null && _me.Body != null) _me.Body.linearVelocity = Vector2.zero;
                     _taskHold = 0;
+                    if (Minigame.Instance != null) Minigame.Instance.Close(false);
                     SetPhase(Phase.Meeting);
                     ShowMeeting();
                     Play(_meetingBody >= 0 ? "Report_BodyFound" : "alarm_emergencymeeting");
@@ -824,6 +825,7 @@ namespace AmongUsLan
             if (_me == null || _me.Body == null) return;
             Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             if (_bot) input = BotInput();
+            if (Minigame.Instance != null) input = Vector2.zero;
             input = Vector2.ClampMagnitude(input, 1f);
             _me.Body.linearVelocity = input * MoveSpeed * (_me.Alive ? 1f : 1.2f);
             _me.Moving = input.sqrMagnitude > 0.01f;
@@ -871,12 +873,17 @@ namespace AmongUsLan
 
         public void UseNearest()
         {
-            if (_phase != Phase.Playing || _me == null || _taskRunning >= 0) return;
+            if (_phase != Phase.Playing || _me == null || _taskRunning >= 0 || Minigame.Instance != null) return;
             if (!_me.Impostor)
             {
                 int idx = NearestTask(out _);
-                if (idx >= 0) { _taskRunning = idx; _taskHold = 0; return; }
+                if (idx >= 0)
+                {
+                    if (OpenTaskMinigame(idx)) return;
+                    _taskRunning = idx; _taskHold = 0; return;
+                }
             }
+            if (_bot && !Environment.GetCommandLineArgs().Contains("-meet")) return;     // bots never press the button on their own
             if (_me.Alive && !_me.UsedButton && Vector2.Distance(WorldMap.EmergencyButtonPos, _me.Pos) <= WorldMap.EmergencyButtonRange)
                 Cmd("REPORT|-1");
         }
@@ -955,6 +962,16 @@ namespace AmongUsLan
             if (_phase == Phase.Menu && _autoJoin && _peer == null && _autoTimer > 2f) { _autoTimer = 1f; JoinGame(_ipField); }
             if (_isHost && _autoHost && _phase == Phase.Lobby && Environment.GetCommandLineArgs().Contains("-solo") && _autoTimer > 2f) HostStartGame();
             if (_isHost && _autoHost && _phase == Phase.Lobby && _players.Count >= (Environment.GetCommandLineArgs().Contains("-four") ? 4 : 2) && _autoTimer > 8f) HostStartGame();
+            if (_phase == Phase.Playing && _autoTimer > 3f && !_mgOpened)
+            {
+                var args = Environment.GetCommandLineArgs();
+                int mi = Array.IndexOf(args, "-openmg");
+                if (mi >= 0 && mi + 1 < args.Length)
+                {
+                    _mgOpened = true;
+                    Minigame.Open(args[mi + 1], ok => Debug.Log("[LAN] minigame closed ok=" + ok), 0, SystemTypes.Admin, "", _bot);
+                }
+            }
             if (_phase == Phase.Playing && Environment.GetCommandLineArgs().Contains("-meet") && _autoTimer > 4f && !_meetDone) { _meetDone = true; Cmd("REPORT|-1"); }
             if (_bot && _phase == Phase.Meeting && _me != null && _me.Alive && _myVote == -2)
             {
@@ -998,6 +1015,7 @@ namespace AmongUsLan
         void DrawWorldLabels(float s)
         {
             if (_phase != Phase.Lobby && _phase != Phase.Playing) return;
+            if (Minigame.Instance != null) return;
             var st = new GUIStyle(GUI.skin.label) { fontSize = 14, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             foreach (var p in _players.Values)
             {

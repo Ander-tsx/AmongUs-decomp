@@ -19,8 +19,9 @@ public static class MapShot
     public static void Run()
     {
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Original/Ship/SkeldShip.prefab");
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(Arg("-prefab", "Assets/Original/Ship/SkeldShip.prefab"));
         var ship = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+        if (Arg("-prefab", "").Length > 0) ship.transform.position = Vector3.zero;
         foreach (var d in ship.GetComponentsInChildren<DateHide>(true)) d.Apply();
         var camGo = new GameObject("cam");
         var cam = camGo.AddComponent<Camera>();
@@ -28,7 +29,8 @@ public static class MapShot
         cam.orthographicSize = float.Parse(Arg("-shotSize", "12"));
         cam.backgroundColor = Color.black;
         cam.clearFlags = CameraClearFlags.SolidColor;
-        camGo.transform.position = new Vector3(float.Parse(Arg("-shotX", "-8")), float.Parse(Arg("-shotY", "-6")), -10);
+        camGo.transform.position = new Vector3(float.Parse(Arg("-shotX", "-8")), float.Parse(Arg("-shotY", "-6")), -200);
+        cam.farClipPlane = 1000;
         int w = int.Parse(Arg("-shotW", "1600")), h = int.Parse(Arg("-shotH", "900"));
         var rt = new RenderTexture(w, h, 24, RenderTextureFormat.ARGB32);
         cam.targetTexture = rt;

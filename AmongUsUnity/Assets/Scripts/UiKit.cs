@@ -28,13 +28,15 @@ namespace AmongUsLan
 
             var camGo = new GameObject("UI Camera");
             camGo.transform.SetParent(go.transform, false);
-            camGo.transform.position = Origin + new Vector3(0, 0, -10);
+            camGo.transform.position = Origin + new Vector3(0, 0, -100);
             k.Cam = camGo.AddComponent<Camera>();
             k.Cam.orthographic = true;
             k.Cam.orthographicSize = 3f;
             k.Cam.clearFlags = CameraClearFlags.Depth;
             k.Cam.cullingMask = 1 << Layer;
             k.Cam.depth = 10;
+            k.Cam.nearClipPlane = 0.3f;
+            k.Cam.farClipPlane = 400f;
             k.Root = new GameObject("UI Root").transform;
             k.Root.SetParent(go.transform, false);
             k.Root.position = Origin;
@@ -159,10 +161,12 @@ namespace AmongUsLan
         }
 
         // ---- input ----
+        public static bool Blocked;                      // set while a minigame owns the mouse
         UiButton _hover;
 
         void Update()
         {
+            if (Blocked) { if (_hover != null) { _hover.SetHover(false); _hover = null; } return; }
             var wp = (Vector2)Cam.ScreenToWorldPoint(Input.mousePosition);
             var hit = Physics2D.OverlapPoint(wp, 1 << Layer);
             var btn = hit != null ? hit.GetComponent<UiButton>() : null;
