@@ -49,6 +49,8 @@ MonoBehaviour:
   - buttonEnterText
   - report
   - LOGO-AU
+  - BUTTON-ChatActive
+  - BUTTON-ChatInactive
   Sprites:
   - {fileID: 21300000, guid: 9aed971b436a2f94fbfccdf74c2ab5b1, type: 2}
   - {fileID: 21300000, guid: 8c661fc5ffb4af54d850139d32c390aa, type: 2}
@@ -86,5 +88,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 706cac79555c0424babadcf6d8faff05, type: 2}
   - {fileID: 21300000, guid: 4e54429965599544cbb8fbce7139f0b3, type: 2}
   - {fileID: 21300000, guid: 6db763431db67604097cc0fbfd381177, type: 2}
+  - {fileID: 21300000, guid: 3311b64c9b65e694cb3e926656f969ec, type: 2}
+  - {fileID: 21300000, guid: 75f7c0fb1f9c2c84b94837999bdc2459, type: 2}
   Font: {fileID: 12800000, guid: f30c80a08efe13249883416386db4fa5, type: 3}
   FontBlack: {fileID: 12800000, guid: 21e4d55f2473ec04fb3475dfd976ec9c, type: 3}

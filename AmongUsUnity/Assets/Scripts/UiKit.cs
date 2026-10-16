@@ -136,7 +136,7 @@ namespace AmongUsLan
             var font = black ? UiSprites.Instance.FontBlack : UiSprites.Instance.Font;
             tm.font = font;
             tm.text = text;
-            tm.fontSize = 64;
+            tm.fontSize = 64; tm.richText = true;
             tm.characterSize = size / 8f;       // ~ size in world units for a 64pt font
             tm.anchor = anchor;
             tm.alignment = anchor == TextAnchor.MiddleLeft || anchor == TextAnchor.UpperLeft || anchor == TextAnchor.LowerLeft

@@ -1,24 +1,21 @@
-# Among Us LAN (MVP, Unity 6)
+# Hay un impostor entre nosotros (Unity 6, LAN)
 
-Clean C# reimplementation of the gameplay loop (the original IL2CPP method bodies are not recoverable),
-reusing original sprites and audio from the local export. Unity **6000.6.4f1**, no extra packages.
+Reimplementación en C# del bucle de juego (los cuerpos de método IL2CPP originales no son recuperables),
+sobre el mapa Skeld, sprites, audio y minijuegos originales migrados con sus GUID. Unity **6000.6.4f1**.
 
-## Prepare
-1. `python3 tools/sync_mvp_assets.py` (from repo root, after exporting with AssetRipper into `RecoveredMac/`).
-2. Open `AmongUsUnity/` in Unity 6 or build from the CLI:
-   `Unity -batchmode -nographics -quit -projectPath AmongUsUnity -executeMethod BuildScript.BuildMac` (or `BuildWindows`).
+## Preparar (una vez, desde la raíz del repo)
+1. Exportar con AssetRipper a `RecoveredMac/` (ver `MIGRACION_MAC.md`).
+2. `python3 tools/sync_mvp_assets.py` (audio/arte pequeño) y
+   `python3 tools/migrate_map.py Ship/SkeldShip.prefab GameObject/Lobby.prefab GameObject/ShipMap.prefab ... --sprites AmongUsUnity/Assets/Editor/ui_sprites.txt`
+   (ver la lista completa de raíces en el historial de commits / `prefabs.txt`).
+3. Compilar: `Unity -batchmode -nographics -quit -projectPath AmongUsUnity -executeMethod BuildScript.BuildMac` (o `BuildWindows`).
 
-## Play
-One player presses **Crear partida**; the others see it in the list (UDP discovery, port 47778) or join by IP
-(TCP, port 47777). Allow both ports in the firewall.
-WASD/arrows move · hold **E** to do a task · **Q** kill (impostor) · **R** report body · **F** emergency button.
+## Jugar
+Uno pulsa **Crear partida** y comparte el **código de sala** de 7 letras que aparece arriba en la sala.
+Los demás pulsan **Unirse con código** (o la partida aparece sola en la lista). Puertos: TCP 47777, UDP 47778.
+WASD/flechas mover · E usar · Q matar · R reportar · V ventilar · Tab mapa · Enter chat.
 
-## Implemented
-Host-authoritative lobby, roles (1 impostor, 2 from 7 players), tasks with shared progress bar, kills with
-cooldown and bodies, report/emergency meetings, voting, ejection, win conditions, return to lobby.
-
-## Not yet
-Original Skeld map and animations, vision/fog, sabotages, vents, chat, cosmetics, reconnect, real task minigames.
-
-## Test automation
-`-autohost`, `-autojoin -ip <ip>`, `-bot`, `-four`, `-slowkill`, `-name <n>` run bots (see `Game.cs`).
+## Incluido
+Sala (dropship) con colores y ajustes de partida, roles, 17 tareas con minijuegos originales, sabotajes
+(reactor, O2, luces, comunicaciones, puertas), ventilas, cámaras de seguridad, mapa/admin, reuniones con
+votación y chat, expulsión, niebla de visión, sonido ambiente, ES/EN.

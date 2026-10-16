@@ -26,7 +26,7 @@ public static class BuildScript
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
 
         PlayerSettings.companyName = "AmongUsLan";
-        PlayerSettings.productName = "AmongUsLan";
+        PlayerSettings.productName = "HayUnImpostor";
         PlayerSettings.defaultScreenWidth = 1280;
         PlayerSettings.defaultScreenHeight = 720;
         PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
@@ -38,13 +38,13 @@ public static class BuildScript
     public static void BuildMac()
     {
         Prepare();
-        Build(BuildTarget.StandaloneOSX, "Builds/macOS/AmongUsLan.app");
+        Build(BuildTarget.StandaloneOSX, "Builds/macOS/HayUnImpostor.app");
     }
 
     public static void BuildWindows()
     {
         Prepare();
-        Build(BuildTarget.StandaloneWindows64, "Builds/Windows/AmongUsLan.exe");
+        Build(BuildTarget.StandaloneWindows64, "Builds/Windows/HayUnImpostor.exe");
     }
 
     static void Build(BuildTarget target, string path)

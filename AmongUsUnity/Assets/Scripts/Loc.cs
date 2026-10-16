@@ -35,6 +35,8 @@ namespace AmongUsLan
             { "Short", "Corta" }, { "Normal", "Normal" }, { "Long", "Larga" }, { "Crew vision", "Visión tripulantes" }, { "Impostor vision", "Visión impostores" },
             { "Common tasks", "Tareas comunes" }, { "Short tasks", "Tareas cortas" }, { "Long tasks", "Tareas largas" }, { "Emergency meetings", "Reuniones de emergencia" },
             { "Voting time", "Tiempo de votación" }, { "Anonymous votes", "Votos anónimos" }, { "On", "Sí" }, { "Off", "No" }, { "Game Settings", "Ajustes de partida" },
+            { "TITLE", "HAY UN IMPOSTOR ENTRE NOSOTROS" }, { "Room code", "Código de sala" }, { "Code", "Código" }, { "Join with code", "Unirse con código" },
+            { "VICTORY", "VICTORIA" }, { "DEFEAT", "DERROTA" },
             // tasks
             { "Swipe Card", "Deslizar tarjeta" }, { "Fix Wiring", "Arreglar cableado" }, { "Empty Garbage", "Vaciar basura" }, { "Calibrate Distributor", "Calibrar distribuidor" },
             { "Chart Course", "Trazar curso" }, { "Clean O2 Filter", "Limpiar filtro de O2" }, { "Prime Shields", "Preparar escudos" }, { "Stabilize Steering", "Estabilizar dirección" },
@@ -48,6 +50,7 @@ namespace AmongUsLan
 
         public static string T(string en)
         {
+            if (en == "TITLE" && !Spanish) return "THERE IS AN IMPOSTOR AMONG US";
             if (Spanish && Es.TryGetValue(en, out var es)) return es;
             return en;
         }

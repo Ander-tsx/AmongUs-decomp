@@ -90,7 +90,7 @@ namespace AmongUsLan
                 bool show = _phase == Phase.Playing && _me != null && !IntroActive;
                 _mapBtn.gameObject.SetActive(show);
                 if (show) _mapBtn.transform.localPosition = new Vector2(_ui.HalfW - 0.55f, _ui.HalfH - 0.55f);
-                if (show && Input.GetKeyDown(KeyCode.Tab)) ToggleMap(MapMode.Normal);
+                if (show && !_chatOpen && Input.GetKeyDown(KeyCode.Tab)) ToggleMap(MapMode.Normal);
             }
             if (_map == null) return;
             if (_phase != Phase.Playing || Minigame.Instance != null || (_me != null && !_me.Alive && _mapMode == MapMode.Sabotage)) { CloseMap(); return; }

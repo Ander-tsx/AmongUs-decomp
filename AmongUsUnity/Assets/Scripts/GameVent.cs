@@ -55,7 +55,7 @@ namespace AmongUsLan
             float w = _ui.HalfW, h = _ui.HalfH;
             _ventBtn.transform.localPosition = new Vector2(w - 3.2f, -h + 0.75f);
             _ventUi.SetTint(_myVent != null || NearestVent() != null ? Color.white : Disabled);
-            if (Input.GetKeyDown(KeyCode.V)) VentButton();
+            if (Input.GetKeyDown(KeyCode.V) && !_chatOpen) VentButton();
         }
 
         void UpdateVentInput()

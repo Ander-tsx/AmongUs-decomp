@@ -29,11 +29,11 @@ namespace AmongUsLan
             _ui.Text(Loc.T("Games on the local network"), _menuUi, new Vector2(-2.95f, 0.6f), 0.24f, Color.white, TextAnchor.MiddleLeft, 6, true);
             _gamesGroup = _ui.Group("Games", _menuUi);
 
-            _ui.Text("IP", _menuUi, new Vector2(-2.95f, -1.55f), 0.24f, Color.white, TextAnchor.MiddleLeft, 6, true);
+            _ui.Text(Loc.T("Code"), _menuUi, new Vector2(-2.95f, -1.55f), 0.24f, Color.white, TextAnchor.MiddleLeft, 6, true);
             _ipBox = _ui.Rect(_menuUi, new Vector2(-1.1f, -1.55f), new Vector2(2.3f, 0.42f), new Color(1, 1, 1, 0.92f), 3);
             _ui.Button(_ipBox, () => _focus = 2, new Vector2(1f, 1f)).GetComponent<BoxCollider2D>().size = Vector2.one;
             _ipText = _ui.Text(_ipField, _menuUi, new Vector2(-2.2f, -1.55f), 0.26f, Color.black, TextAnchor.MiddleLeft, 6, true);
-            MenuButton(Loc.T("Join by IP"), new Vector2(1.7f, -1.55f), new Vector2(2.4f, 0.5f), () => { _nameField = Clean(_nameField); JoinGame(_ipField.Trim()); });
+            MenuButton(Loc.T("Join with code"), new Vector2(1.7f, -1.55f), new Vector2(2.4f, 0.5f), () => { _nameField = Clean(_nameField); JoinGame(_ipField.Trim()); });
 
             _menuHint = _ui.Text(Loc.T("Move: WASD/arrows   Use: E   Kill: Q   Report: R   Vent: V"), _menuUi, new Vector2(0, -2.35f), 0.17f, new Color(0.8f, 0.85f, 1f), TextAnchor.MiddleCenter, 6);
             _menuStatus = _ui.Text("", _menuUi, new Vector2(0, -2.7f), 0.2f, new Color(1f, 0.6f, 0.4f), TextAnchor.MiddleCenter, 6, true);
@@ -55,7 +55,7 @@ namespace AmongUsLan
             if (_menuUi != null) Destroy(_menuUi.gameObject);
             _menuUi = _ui.Group("MenuUI");
             _ui.Rect(_menuUi, Vector2.zero, new Vector2(_ui.HalfW * 2 + 2, _ui.HalfH * 2 + 2), new Color(0f, 0f, 0.05f, 0.55f), 0);
-            _ui.Sprite("LOGO-AU", _menuUi, new Vector2(0, _ui.HalfH - 0.85f), 5, 0.55f);
+            _ui.Text(Loc.T("TITLE"), _menuUi, new Vector2(0, _ui.HalfH - 0.7f), 0.62f, Color.white, TextAnchor.MiddleCenter, 5, true);
             BuildMenuControls();
             _gameRows.Clear();
             _refreshAt = 0;
@@ -70,7 +70,7 @@ namespace AmongUsLan
                 foreach (var ch in Input.inputString)
                 {
                     ref string target = ref _nameField;
-                    if (_focus == 2) { HandleChar(ref _ipField, ch, 40); }
+                    if (_focus == 2) { HandleChar(ref _ipField, char.ToUpperInvariant(ch), 20); }
                     else HandleChar(ref _nameField, ch, 10);
                 }
                 if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Tab)) _focus = _focus == 1 ? 2 : 0;

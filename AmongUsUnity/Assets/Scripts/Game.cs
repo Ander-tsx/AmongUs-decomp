@@ -30,7 +30,7 @@ namespace AmongUsLan
     }
 
     /// <summary>
-    /// Host-authoritative Among Us over LAN. Host is player id 0 and runs the rules; clients send commands
+    /// Host-authoritative "Hay un impostor entre nosotros" over LAN. Host is player id 0 and runs the rules; clients send commands
     /// (POS/KILL/TASK/REPORT/VOTE) and mirror the events the host broadcasts. The world is the original Skeld.
     /// </summary>
     public partial class Game : MonoBehaviour
@@ -68,7 +68,7 @@ namespace AmongUsLan
 
         // UI / presentation
         string _nameField = "Player";
-        string _ipField = "127.0.0.1";
+        string _ipField = "";
         Camera _cam;
         AudioSource _audio;
         readonly Dictionary<string, AudioClip> _clips = new Dictionary<string, AudioClip>();
@@ -126,6 +126,7 @@ namespace AmongUsLan
             Physics2D.queriesHitTriggers = false;
             _fog = FogOfWar.Create(_cam);
             BuildHud();
+            BuildChat();
             BuildVentHud();
             BuildLobbyHud();
             BuildMenuUi();
@@ -181,7 +182,7 @@ namespace AmongUsLan
 
         void JoinGame(string ip)
         {
-            try { _peer = LanPeer.Connect(ip); }
+            try { _peer = LanPeer.Connect(RoomCode.ToIp(ip)); }
             catch (Exception e) { _status = e.Message; return; }
             _isHost = false;
             _peer.Send(0, "HELLO|" + Clean(_nameField));
@@ -302,6 +303,7 @@ namespace AmongUsLan
                 case "HOLD": HostHold(from, int.Parse(a[1]), a[2] == "1"); break;
                 case "VENT": HostVent(from, a[1], int.Parse(a[2])); break;
                 case "COLOR": HostColor(from, int.Parse(a[1])); break;
+                case "CHAT": HostChat(from, a.Length > 1 ? string.Join("/", a.Skip(1)) : ""); break;
             }
         }
 
@@ -437,8 +439,8 @@ namespace AmongUsLan
 
         void HostEnd(int winner)
         {
-            string impNames = string.Join(", ", _players.Values.Where(p => p.Impostor).Select(p => p.Name));
-            Emit("END|" + winner + "|" + impNames);
+            string impIds = string.Join(",", _players.Values.Where(p => p.Impostor).Select(p => p.Id));
+            Emit("END|" + winner + "|" + impIds);
         }
 
         // =====================================================================================
@@ -566,6 +568,9 @@ namespace AmongUsLan
                     _endWinner = int.Parse(a[1]);
                     Debug.Log("[LAN] END winner=" + (_endWinner == 0 ? "crew" : "impostors"));
                     _endImpostors = a.Length > 2 ? a[2] : "";
+                    foreach (var iid in _endImpostors.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+                        if (_players.TryGetValue(int.Parse(iid), out var rev)) rev.Impostor = true;
+                    _endImpostors = string.Join(", ", _players.Values.Where(x => x.Impostor).Select(x => x.Name));
                     HideMeeting();
                     ResetSabotage();
                     _endText = _endWinner == 0 ? Loc.T("Crewmates Win") : Loc.T("Impostors Win");
@@ -577,6 +582,9 @@ namespace AmongUsLan
                 case "CFG":
                     ApplyCfg(a[1]);
                     break;
+                case "CHATMSG":
+                    ApplyChat(a);
+                    break;
                 case "COUNT":
                     Play("Panel_TempButton");
                     break;
@@ -587,6 +595,7 @@ namespace AmongUsLan
                     ApplySabEvent(a);
                     break;
                 case "LOBBYBACK":
+                    HideEnd();
                     ResetSabotage();
                     HideMeeting();
                     ClearRound();
@@ -715,6 +724,8 @@ namespace AmongUsLan
             UpdateFog();
             UpdateHud();
             UpdateSabotage();
+            UpdateChat();
+            UpdateEnd();
             UpdateAmbience();
             UpdateMap();
             UpdateLobbyHud();
@@ -889,7 +900,7 @@ namespace AmongUsLan
             if (_me == null || _me.Body == null) return;
             Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             if (_bot) input = BotInput();
-            if (Minigame.Instance != null || IntroActive || _myVent != null) input = Vector2.zero;
+            if (Minigame.Instance != null || IntroActive || _myVent != null || _chatOpen) input = Vector2.zero;
             input = Vector2.ClampMagnitude(input, 1f);
             _me.Body.linearVelocity = input * MoveSpeed * (_me.Alive ? 1f : 1.2f);
             _me.Moving = input.sqrMagnitude > 0.01f;
@@ -916,7 +927,7 @@ namespace AmongUsLan
                 }
             }
 
-            if (_phase != Phase.Playing) return;
+            if (_phase != Phase.Playing || _chatOpen) return;
 
             if (_killCd > 0f) _killCd -= Time.deltaTime;
 
@@ -1108,7 +1119,6 @@ namespace AmongUsLan
 
             switch (_phase)
             {
-                case Phase.Ended: DrawEnd(W, H); break;
             }
         }
 
@@ -1154,7 +1164,7 @@ namespace AmongUsLan
         void DrawMenu(float W, float H)
         {
             GUI.Box(new Rect(W / 2 - 330, 60, 660, 600), "");
-            GUI.Label(new Rect(W / 2 - 330, 75, 660, 60), "AMONG US · LAN", _big);
+            GUI.Label(new Rect(W / 2 - 330, 75, 660, 60), "HAY UN IMPOSTOR ENTRE NOSOTROS", _big);
             GUI.Label(new Rect(W / 2 - 300, 150, 120, 30), "Nombre:", _mid);
             _nameField = GUI.TextField(new Rect(W / 2 - 170, 150, 260, 32), _nameField, 10, _mid);
             if (GUI.Button(new Rect(W / 2 + 110, 148, 190, 36), "Crear partida", _mid)) { _nameField = Clean(_nameField); HostGame(); }

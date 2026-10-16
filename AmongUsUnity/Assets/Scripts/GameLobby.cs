@@ -138,7 +138,7 @@ namespace AmongUsLan
                 _startText.text = _startCountdown >= 0f ? Mathf.CeilToInt(_startCountdown).ToString() : Loc.T(_players.Count >= 2 ? "START" : "START (solo)");
                 _startUi.SetTint(_startCountdown >= 0f ? Disabled : Color.white);
             }
-            string ip = _isHost ? Loc.T("Your LAN address") + ": " + LocalAddress() : Loc.T("Waiting for the host");
+            string ip = _isHost ? Loc.T("Room code") + ": " + RoomCode.Encode(LocalAddress()) : Loc.T("Waiting for the host");
             _lobbyInfo.text = ip + "   -   " + _players.Count + "/" + Palette.Colors.Length + " " + Loc.T("players");
             if (Input.GetKeyDown(KeyCode.E) && NearWardrobe) ToggleWardrobe();
             else if (Input.GetKeyDown(KeyCode.E) && NearSettingsPanel) ToggleSettings();
@@ -171,7 +171,7 @@ namespace AmongUsLan
         {
             _menuUi = _ui.Group("MenuUI");
             _ui.Rect(_menuUi, Vector2.zero, new Vector2(_ui.HalfW * 2 + 2, _ui.HalfH * 2 + 2), new Color(0f, 0f, 0.05f, 0.55f), 0);
-            _ui.Sprite("LOGO-AU", _menuUi, new Vector2(0, _ui.HalfH - 0.85f), 5, 0.55f);
+            _ui.Text(Loc.T("TITLE"), _menuUi, new Vector2(0, _ui.HalfH - 0.7f), 0.62f, Color.white, TextAnchor.MiddleCenter, 5, true);
             BuildMenuControls();
         }
 

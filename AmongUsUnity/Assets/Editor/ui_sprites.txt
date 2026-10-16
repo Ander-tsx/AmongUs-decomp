@@ -34,3 +34,5 @@ buttonClick
 buttonEnterText
 report
 LOGO-AU
+BUTTON-ChatActive
+BUTTON-ChatInactive
