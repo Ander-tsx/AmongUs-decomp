@@ -107,3 +107,15 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Local recovery tools
+/.local/
+/Original/
+/Recovered/
+/RecoveredMac/
+__pycache__/
+/Recovered/ExportedProject/Library/
+/Recovered/ExportedProject/Temp/
+/Recovered/ExportedProject/Obj/
+/Recovered/ExportedProject/Logs/
+/Recovered/ExportedProject/UserSettings/

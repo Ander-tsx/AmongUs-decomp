@@ -1,0 +1,15 @@
+{
+  "assembly": ".local\\il-recovery\\Assembly-CSharp.dll",
+  "method_bodies": 18309,
+  "throw_null_bodies": 18309,
+  "most_common_opcode_patterns": [
+    {
+      "opcodes": [
+        "ldnull",
+        "throw"
+      ],
+      "count": 18309
+    }
+  ],
+  "errors": []
+}
