@@ -21,6 +21,8 @@ namespace AmongUsLan
 
         static Shader Find(string n) => Shader.Find(n);
 
+        public const int FogLayer = 6;
+
         public static FogOfWar Create(Camera cam)
         {
             var go = new GameObject("Fog");
@@ -33,6 +35,7 @@ namespace AmongUsLan
         MeshRenderer MakeRenderer(string name, Mesh mesh, string shader, int order)
         {
             var go = new GameObject(name);
+            go.layer = FogLayer;
             go.transform.SetParent(transform, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var r = go.AddComponent<MeshRenderer>();

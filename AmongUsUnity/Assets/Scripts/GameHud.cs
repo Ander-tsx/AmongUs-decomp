@@ -43,6 +43,7 @@ namespace AmongUsLan
             _useBarFill = _ui.Rect(_hud, new Vector2(-1.25f, -h + 0.5f), new Vector2(0.01f, 0.22f), new Color(0.95f, 0.85f, 0.2f), 5);
             _useProgressText = _ui.Text("", _hud, new Vector2(0, -h + 0.9f), 0.25f, Color.white, TextAnchor.MiddleCenter, 6, true);
             BuildSabotageHud();
+            BuildMapButton();
             _hud.gameObject.SetActive(false);
         }
 

@@ -231,9 +231,7 @@ namespace AmongUsLan
         void ToggleSabMenu()
         {
             if (_phase != Phase.Playing || _me == null || !_me.Impostor || !_me.Alive) return;
-            if (_sabMenu != null) { CloseSabMenu(); return; }
-            _doorsMenu = false;
-            BuildSabMenu();
+            ToggleMap(MapMode.Sabotage);
         }
 
         void CloseSabMenu() { if (_sabMenu != null) Destroy(_sabMenu.gameObject); _sabMenu = null; }

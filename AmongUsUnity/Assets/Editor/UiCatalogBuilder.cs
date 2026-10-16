@@ -50,6 +50,12 @@ public static class PrefabCatalogBuilder
             var inst = (GameObject)Object.Instantiate(src);
             foreach (var t in inst.GetComponentsInChildren<Transform>(true))
                 GameObjectUtility.RemoveMonoBehavioursWithMissingScript(t.gameObject);
+            var pmat = PlayerPrefabBuilder.PlayerMaterial();
+            foreach (var r in inst.GetComponentsInChildren<Renderer>(true))
+            {
+                var sn = r.sharedMaterial != null ? r.sharedMaterial.shader.name : "";
+                if (sn.Contains("PlayerShader") || sn.Contains("SimpleMaskedPlayer")) r.sharedMaterial = pmat;
+            }
             Directory.CreateDirectory("Assets/Resources/Minigames");
             var saved = PrefabUtility.SaveAsPrefabAsset(inst, "Assets/Resources/Minigames/" + n + ".prefab");
             Object.DestroyImmediate(inst);

@@ -27,6 +27,12 @@ namespace AmongUsLan
             return c;
         }
 
+        static Transform _adminMap;
+        public static Transform AdminMap { get { if (_adminMap == null) { var g = GameObject.Find("MapRoomConsole"); if (g != null) _adminMap = g.transform; } return _adminMap; } }
+
+        static Transform _surv;
+        public static Transform SurvConsole { get { if (_surv == null) { var g = GameObject.Find("SurvConsole"); if (g != null) _surv = g.transform; } return _surv; } }
+
         public static Vector2 SpawnCenter => ShipStatus.Instance != null ? ShipStatus.Instance.InitialSpawnCenter : Vector2.zero;
         public static float SpawnRadius => ShipStatus.Instance != null && ShipStatus.Instance.SpawnRadius > 0 ? ShipStatus.Instance.SpawnRadius : 1.6f;
 

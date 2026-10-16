@@ -24,3 +24,5 @@ ReceivePowerMinigame
 Asteroid1
 o2_leaf1
 Lobby
+ShipMap
+SurvMinigame

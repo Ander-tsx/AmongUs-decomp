@@ -80,7 +80,7 @@ namespace AmongUsLan
         float _botDirTimer;
         Vector2 _botDir;
         float _autoTimer;
-        bool _meetDone, _mgOpened, _sabMenuShown, _ventDemo;
+        bool _meetDone, _mgOpened, _sabMenuShown, _ventDemo, _mapShown;
         string _shotPath;
         float _shotAt;
 
@@ -705,6 +705,7 @@ namespace AmongUsLan
             UpdateFog();
             UpdateHud();
             UpdateSabotage();
+            UpdateMap();
             UpdateLobbyHud();
             UpdateLobbyAudio();
             UpdateMenuUi();
@@ -936,6 +937,14 @@ namespace AmongUsLan
                     _taskRunning = idx; _taskHold = 0; return;
                 }
             }
+            var sv = WorldMap.SurvConsole;
+            if (sv != null && Vector2.Distance(sv.position, _me.Pos) <= 1.6f)
+            {
+                var m = Minigame.Open("SurvMinigame", ok => { }, 0, SystemTypes.Security, "SurvConsole", _bot, SystemTypes.Hallway, _sab == SabKind.Comms ? "down" : null);
+                if (m != null) { if (_me.Body != null) _me.Body.linearVelocity = Vector2.zero; return; }
+            }
+            var adm = WorldMap.AdminMap;
+            if (adm != null && !_bot && Vector2.Distance(adm.position, _me.Pos) <= 1.5f) { ToggleMap(MapMode.Count); return; }
             if (_bot && !Environment.GetCommandLineArgs().Contains("-meet")) return;     // bots never press the button on their own
             if (_me.Alive && !_me.UsedButton && Vector2.Distance(WorldMap.EmergencyButtonPos, _me.Pos) <= WorldMap.EmergencyButtonRange)
                 Cmd("REPORT|-1");
@@ -1035,6 +1044,7 @@ namespace AmongUsLan
                 _me.Pos = _me.TargetPos = _me.Body.position;
                 Cmd("VENT|enter|" + cv.Id);
             }
+            if (_phase == Phase.Playing && _autoTimer > 6f && !IntroActive && !_mapShown && Environment.GetCommandLineArgs().Contains("-openmap")) { _mapShown = true; var args2 = Environment.GetCommandLineArgs(); int mi2 = Array.IndexOf(args2, "-openmap"); ToggleMap((MapMode)Enum.Parse(typeof(MapMode), args2[mi2 + 1])); }
             if (_phase == Phase.Playing && _autoTimer > 7f && !_sabMenuShown && Environment.GetCommandLineArgs().Contains("-sabmenu")) { _sabMenuShown = true; _sabCooldown = 0; ToggleSabMenu(); }
             if (_phase == Phase.Playing && _autoTimer > 3f && !_mgOpened)
             {
@@ -1089,7 +1099,7 @@ namespace AmongUsLan
         void DrawWorldLabels(float s)
         {
             if (_phase != Phase.Lobby && _phase != Phase.Playing) return;
-            if (Minigame.Instance != null || IntroActive) return;
+            if (Minigame.Instance != null || IntroActive || _map != null) return;
             var st = new GUIStyle(GUI.skin.label) { fontSize = 14, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             foreach (var p in _players.Values)
             {
