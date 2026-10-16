@@ -9,7 +9,7 @@ from pathlib import Path
 
 AUDIO = ['impostor_kill', 'Report_BodyFound', 'alarm_emergencymeeting', 'EjectSplash', 'RoleReveal_Crewmate',
          'RoleReveal_Impostor', 'FootstepMetal01', 'FootstepMetal02', 'FootstepMetal03', 'FootstepMetal04',
-         'Maiden Voyage - Theme of Skeld', 'Panel_TempButton', 'Alarm_sabotage', 'door_close', 'eject_text', 'Vent_Enter']
+         'Maiden Voyage - Theme of Skeld', 'Panel_TempButton', 'Alarm_sabotage', 'door_close', 'eject_text', 'Vent_Enter', 'task_Complete', 'task_Inprogress', 'Player_SpawnIn2']
 
 
 def main():

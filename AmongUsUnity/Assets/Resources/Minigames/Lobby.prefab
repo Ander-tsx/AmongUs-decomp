@@ -1375,6 +1375,7 @@ MonoBehaviour:
   AmbientVolume: 0.7
   AmbientMaxDist: 8
   AmbientOffset: {x: 0, y: 0}
+  FootStepSounds: {fileID: 11400000, guid: 7adcfc823f8b8a44eb61705ee425b3cc, type: 2}
 --- !u!61 &204519518710395820
 BoxCollider2D:
   m_ObjectHideFlags: 0

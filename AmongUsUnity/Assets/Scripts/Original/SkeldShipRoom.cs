@@ -6,4 +6,5 @@ public class SkeldShipRoom : PlainShipRoom
     public float AmbientVolume;
     public float AmbientMaxDist;
     public Vector2 AmbientOffset;
+    public SoundGroup FootStepSounds;
 }

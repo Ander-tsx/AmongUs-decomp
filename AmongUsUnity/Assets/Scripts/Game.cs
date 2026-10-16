@@ -106,6 +106,7 @@ namespace AmongUsLan
             Application.targetFrameRate = 60;
             WorldMap.Init();
             InitVents();
+            InitAmbience();
             BuildLobby();
             _cam = Camera.main;
             if (_cam == null)
@@ -487,7 +488,7 @@ namespace AmongUsLan
                             tk.Done++;
                             if (tk.Type == TaskTypes.InspectSample && tk.Done == 1) tk.NotBefore = Time.time + (_bot ? 2f : 60f);
                         }
-                        Play("Panel_TempButton");
+                        Play(_myTasks.Count > idx && _myTasks[idx].Complete ? "task_Complete" : "task_Inprogress");
                         break;
                     }
                 case "PROG":
@@ -714,6 +715,7 @@ namespace AmongUsLan
             UpdateFog();
             UpdateHud();
             UpdateSabotage();
+            UpdateAmbience();
             UpdateMap();
             UpdateLobbyHud();
             UpdateLobbyAudio();
@@ -896,7 +898,12 @@ namespace AmongUsLan
             if (_me.Moving && _me.Alive)
             {
                 _stepTimer -= Time.deltaTime;
-                if (_stepTimer <= 0f) { _stepTimer = 0.36f; Play("FootstepMetal0" + UnityEngine.Random.Range(1, 5), 0.4f); }
+                if (_stepTimer <= 0f)
+                {
+                    _stepTimer = 0.36f;
+                    var fc = FootstepAt(_me.Pos);
+                    if (fc != null) _audio.PlayOneShot(fc, 0.45f); else Play("FootstepMetal0" + UnityEngine.Random.Range(1, 5), 0.4f);
+                }
             }
 
             if (!_isHost)
