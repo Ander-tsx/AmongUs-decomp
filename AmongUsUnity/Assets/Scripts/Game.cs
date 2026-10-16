@@ -123,6 +123,7 @@ namespace AmongUsLan
             foreach (var c in Resources.LoadAll<AudioClip>("Audio")) _clips[c.name] = c;
             _white = Texture2D.whiteTexture;
             Physics2D.queriesStartInColliders = false;
+            InitHalloween();
             Physics2D.queriesHitTriggers = false;
             _fog = FogOfWar.Create(_cam);
             BuildHud();
@@ -445,6 +446,7 @@ namespace AmongUsLan
 
         void HostEnd(int winner)
         {
+            if (_phase == Phase.Ended) return;
             string impIds = string.Join(",", _players.Values.Where(p => p.Impostor).Select(p => p.Id));
             Emit("END|" + winner + "|" + impIds);
         }
@@ -736,6 +738,7 @@ namespace AmongUsLan
             UpdateChat();
             UpdateEnd();
             UpdateAmbience();
+            UpdateHalloween();
             UpdateMap();
             UpdateLobbyHud();
             UpdateLobbyAudio();

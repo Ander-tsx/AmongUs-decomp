@@ -8,6 +8,7 @@ namespace AmongUsLan
     {
         static readonly Dictionary<string, Console> Consoles = new Dictionary<string, Console>();
         static PlainShipRoom[] _rooms;
+        public static PlainShipRoom[] Rooms => _rooms;
 
         static string Key(string name, SystemTypes room) => name + "@" + (int)room;
 

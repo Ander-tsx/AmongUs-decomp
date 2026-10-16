@@ -38,7 +38,7 @@ public class Vent : MonoBehaviour
         var arrows = new[] { transform.Find("Arrow"), transform.Find("Arrow (1)"), transform.Find("Arrow (2)") };
         var targets = Neighbours;
         for (int i = 0; i < arrows.Length; i++)
-            if (arrows[i] != null && arrows[i].gameObject.activeSelf && targets[i] != null && Vector2.Distance(arrows[i].position, world) < 0.4f) return targets[i];
+            if (arrows[i] != null && arrows[i].gameObject.activeSelf && targets[i] != null && Vector2.Distance(arrows[i].position, world) < 0.7f) return targets[i];
         return null;
     }
 

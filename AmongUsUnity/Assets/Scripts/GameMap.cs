@@ -103,7 +103,7 @@ namespace AmongUsLan
                 _mapHere.localPosition = new Vector3(ToMap(_me.Pos).x, ToMap(_me.Pos).y, -1f);
                 _mapHere.gameObject.SetActive(!commsDown);
             }
-            _mapNote.text = commsDown ? Loc.T("COMMS SABOTAGED") : (_mapMode == MapMode.Count ? "" : "");
+            if (commsDown) _mapNote.text = Loc.T("COMMS SABOTAGED");
 
             // task markers
             if (_mapTasks != null)
@@ -155,26 +155,36 @@ namespace AmongUsLan
         {
             var wp = (Vector2)_ui.Cam.ScreenToWorldPoint(Input.mousePosition);
             foreach (var c in Physics2D.OverlapPointAll(wp, 1 << UiKit.Layer))
+                if (c.transform.IsChildOf(_map.transform) && c.name == "CloseButton") { CloseMap(); return; }
+            if (_mapMode != MapMode.Sabotage || _mapInfected == null) return;
+
+            // hit-test the sabotage buttons by sprite bounds (independent of the original colliders), topmost-nearest first
+            SpriteRenderer best = null; float bd = float.MaxValue;
+            foreach (var sr in _mapInfected.GetComponentsInChildren<SpriteRenderer>(false))
             {
-                if (!c.transform.IsChildOf(_map.transform)) continue;
-                if (c.name == "CloseButton") { CloseMap(); return; }
-                if (_mapMode == MapMode.Sabotage && _sabCooldown <= 0f)
-                {
-                    var room = c.GetComponentInParent<Transform>();
-                    var parent = c.transform.parent;
-                    if (parent == null) continue;
-                    var parentName = parent.name;
-                    SystemTypes rt;
-                    if (!MapRoomTypes.TryGetValue(c.name == "closeDoors" || c.name == "bomb" || c.name == "lightsOut" || c.name == "meltdown" ? parentName : c.name, out rt)) continue;
-                    switch (c.name)
-                    {
-                        case "closeDoors": DoSabotage("Doors", ((int)rt).ToString()); CloseMap(); return;
-                        case "meltdown": DoSabotage("Reactor", ""); CloseMap(); return;
-                        case "lightsOut": DoSabotage("Lights", ""); CloseMap(); return;
-                        case "bomb": DoSabotage(rt == SystemTypes.Comms ? "Comms" : "O2", ""); CloseMap(); return;
-                    }
-                }
+                var n = sr.name;
+                if (n != "closeDoors" && n != "bomb" && n != "lightsOut" && n != "meltdown") continue;
+                var bounds = sr.bounds; bounds.Expand(new Vector3(0.15f, 0.15f, 100f));
+                if (!bounds.Contains(new Vector3(wp.x, wp.y, bounds.center.z))) continue;
+                float d = Vector2.Distance(bounds.center, wp);
+                if (d < bd) { bd = d; best = sr; }
             }
+            if (best == null) return;
+            if (_sabCooldown > 0f || _sab != SabKind.None && best.name != "closeDoors")
+            {
+                _mapNote.text = _sab != SabKind.None ? Loc.T("A sabotage is already active") : Loc.T("Recharging...") + " " + Mathf.CeilToInt(_sabCooldown) + "s";
+                return;
+            }
+            var parent = best.transform.parent;
+            MapRoomTypes.TryGetValue(parent != null ? parent.name : "", out var rt);
+            switch (best.name)
+            {
+                case "closeDoors": DoSabotage("Doors", ((int)rt).ToString()); break;
+                case "meltdown": DoSabotage("Reactor", ""); break;
+                case "lightsOut": DoSabotage("Lights", ""); break;
+                case "bomb": DoSabotage(rt == SystemTypes.Comms ? "Comms" : "O2", ""); break;
+            }
+            CloseMap();
         }
 
         static readonly Dictionary<string, SystemTypes> MapRoomTypes = new Dictionary<string, SystemTypes>

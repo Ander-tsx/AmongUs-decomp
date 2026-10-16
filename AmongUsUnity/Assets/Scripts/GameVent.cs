@@ -58,9 +58,36 @@ namespace AmongUsLan
             if (Input.GetKeyDown(KeyCode.V) && !_chatOpen) VentButton();
         }
 
+        Transform _ventChoices;
+        Vent _ventChoicesFor;
+
+        void RefreshVentChoices()
+        {
+            if (_ventChoices != null && (_myVent == null || _ventChoicesFor != _myVent)) { Destroy(_ventChoices.gameObject); _ventChoices = null; _ventChoicesFor = null; }
+            if (_myVent == null || _ventChoices != null || _ui == null) return;
+            _ventChoicesFor = _myVent;
+            _ventChoices = _ui.Group("VentChoices", _hud);
+            var targets = _myVent.Neighbours.Where(n => n != null).ToList();
+            float h = _ui.HalfH;
+            _ui.Text(Loc.T("Move to a vent"), _ventChoices, new Vector2(0, -h + 1.55f), 0.24f, Color.white, TextAnchor.MiddleCenter, 60, true);
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var t = targets[i];
+                float x = (i - (targets.Count - 1) / 2f) * 2.6f;
+                var sr = _ui.Sliced("buttonClick", _ventChoices, new Vector2(x, -h + 1.0f), new Vector2(2.4f, 0.55f), 60);
+                _ui.Button(sr, () => Cmd("VENT|move|" + t.Id), new Vector2(2.4f, 0.55f));
+                var room = WorldMap.RoomAt(t.transform.position);
+                _ui.Text((i + 1) + ": " + Loc.T(RoomLabel(room)), _ventChoices, new Vector2(x, -h + 1.0f), 0.2f, Color.white, TextAnchor.MiddleCenter, 62, true);
+            }
+        }
+
         void UpdateVentInput()
         {
+            RefreshVentChoices();
             if (_myVent == null) return;
+            var opts = _myVent.Neighbours.Where(n => n != null).ToList();
+            for (int i = 0; i < opts.Count && i < 3; i++)
+                if (Input.GetKeyDown(KeyCode.Alpha1 + i) || Input.GetKeyDown(KeyCode.Keypad1 + i)) { Cmd("VENT|move|" + opts[i].Id); return; }
             if (Input.GetKeyDown(KeyCode.Escape)) { Cmd("VENT|exit|" + _myVent.Id); return; }
             if (Input.GetMouseButtonDown(0))
             {

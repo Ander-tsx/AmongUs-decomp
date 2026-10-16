@@ -37,7 +37,7 @@ namespace AmongUsLan
             { "Voting time", "Tiempo de votación" }, { "Anonymous votes", "Votos anónimos" }, { "On", "Sí" }, { "Off", "No" }, { "Game Settings", "Ajustes de partida" },
             { "TITLE", "HAY UN IMPOSTOR ENTRE NOSOTROS" }, { "Room code", "Código de sala" }, { "Code", "Código" }, { "Join with code", "Unirse con código" },
             { "DEAD BODY REPORTED", "¡CUERPO REPORTADO!" }, { "EMERGENCY MEETING", "REUNIÓN DE EMERGENCIA" },
-            { "VICTORY", "VICTORIA" }, { "DEFEAT", "DERROTA" },
+            { "VICTORY", "VICTORIA" }, { "Move to a vent", "Moverse a otra ventila" }, { "A sabotage is already active", "Ya hay un sabotaje activo" }, { "Recharging...", "Recargando..." }, { "DEFEAT", "DERROTA" },
             // tasks
             { "Swipe Card", "Deslizar tarjeta" }, { "Fix Wiring", "Arreglar cableado" }, { "Empty Garbage", "Vaciar basura" }, { "Calibrate Distributor", "Calibrar distribuidor" },
             { "Chart Course", "Trazar curso" }, { "Clean O2 Filter", "Limpiar filtro de O2" }, { "Prime Shields", "Preparar escudos" }, { "Stabilize Steering", "Estabilizar dirección" },

@@ -18,7 +18,8 @@ public class CardSlideGame : Minigame
     TextMesh _status;
     Vector3 _cardHome;
     float _slotY, _minX, _maxX, _grabDx, _grabDy;
-    bool _dragging, _inSlot, _timing, _done;
+    bool _dragging, _inSlot, _timing, _done, _returning;
+    float _startX, _prevX;
     float _t0;
 
     static readonly Color Off = new Color(0.45f, 0.45f, 0.45f, 1f);
@@ -34,6 +35,7 @@ public class CardSlideGame : Minigame
         _slotY = sliderBottom != null ? sliderBottom.position.y - 0.05f : 0f;
         _minX = transform.position.x - 2.0f;
         _maxX = transform.position.x + 2.0f;
+        _startX = _minX + 0.5f; _prevX = _minX;
         SetLights(false, false);
         Sfx(WalletOut);
         if (Bot) StartCoroutine(BotSolve());
@@ -45,42 +47,71 @@ public class CardSlideGame : Minigame
         if (greenLight != null) greenLight.color = green ? Color.white : Off;
     }
 
+    bool Grabbable(Vector2 m)
+    {
+        var cb = col.bounds; cb.Expand(new Vector3(0.5f, 0.5f, 10f));
+        if (cb.Contains(new Vector3(m.x, m.y, cb.center.z))) return true;
+        if (_wallet != null)
+            foreach (var r in _wallet.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                var wb = r.bounds; wb.Expand(new Vector3(0.2f, 0.2f, 10f));
+                if (wb.Contains(new Vector3(m.x, m.y, wb.center.z))) return true;
+            }
+        return false;
+    }
+
     protected override void Tick()
     {
         if (_done || Bot) return;
         var m = Mouse;
-        if (MouseDown && !_dragging && HitAt(m) == col)
+        if (MouseDown && !_dragging && !_returning && Grabbable(m))
         {
             _dragging = true; _inSlot = false; _timing = false;
-            _grabDx = _card.position.x - m.x; _grabDy = _card.position.y - m.y;
+            var cb = col.bounds;
+            bool onCard = cb.Contains(new Vector3(m.x, m.y, cb.center.z));
+            _grabDx = onCard ? _card.position.x - m.x : 0f;
+            _grabDy = onCard ? _card.position.y - m.y : 0f;
+            RaiseCard();
             Sfx(CardMove);
         }
         if (_dragging && MouseHeld)
         {
             var p = _card.position;
+            float x = Mathf.Clamp(m.x + _grabDx, _minX, _maxX);
             if (!_inSlot)
             {
-                p.x = Mathf.Clamp(m.x + _grabDx, _minX, _maxX);
+                p.x = x;
                 p.y = m.y + _grabDy;
-                if (p.y >= _slotY - 0.15f) { _inSlot = true; }
+                if (p.y >= _slotY - 0.3f) _inSlot = true;
             }
             if (_inSlot)
             {
                 p.y = _slotY;
-                p.x = Mathf.Clamp(m.x + _grabDx, _minX, _maxX);
-                if (!_timing && p.x > _minX + 0.25f && p.x < _minX + 0.6f) { _timing = true; _t0 = Time.time; }
-                if (_timing && p.x >= _maxX - 0.05f) Evaluate();
+                if (!_timing && _prevX < _startX && x >= _startX) { _timing = true; _t0 = Time.time; }
+                if (_timing && x < _startX - 0.05f) _timing = false;
+                p.x = x;
+                _prevX = x;
+                if (_timing && x >= _maxX - 0.05f) Evaluate();
             }
+            else _prevX = x;
             _card.position = p;
         }
         if (_dragging && MouseUp) { _dragging = false; if (!_done) StartCoroutine(ReturnCard(false)); }
+    }
+
+    void RaiseCard()
+    {
+        int top = 0;
+        foreach (var r in GetComponentsInChildren<Renderer>(true)) if (r.transform != _card) top = Mathf.Max(top, r.sortingOrder);
+        foreach (var r in _card.GetComponentsInChildren<Renderer>(true)) r.sortingOrder = top + 1;
+        var pz = _card.position; pz.z = transform.position.z - 8f; _card.position = pz;
     }
 
     void Evaluate()
     {
         _dragging = false;
         dragTime = Time.time - _t0;
-        if (AcceptedTime.Contains(dragTime))
+        if (dragTime >= AcceptedTime.min * 0.8f && dragTime <= AcceptedTime.max * 1.6f)
         {
             _done = true;
             SetLights(false, true);
@@ -91,7 +122,7 @@ public class CardSlideGame : Minigame
         else
         {
             SetLights(true, false);
-            _status.text = dragTime < AcceptedTime.min ? "Too Fast. Try Again" : "Too Slow. Try Again";
+            _status.text = dragTime < AcceptedTime.min * 0.8f ? "Too Fast. Try Again" : "Too Slow. Try Again";
             Sfx(DenySound);
             StartCoroutine(ReturnCard(true));
         }
@@ -99,9 +130,10 @@ public class CardSlideGame : Minigame
 
     IEnumerator ReturnCard(bool deny)
     {
+        _returning = true;
         float t = 0f; var from = _card.position;
         while (t < 1f) { t += Time.deltaTime * 3f; _card.position = Vector3.Lerp(from, _cardHome, t); yield return null; }
-        _timing = false; _inSlot = false;
+        _timing = false; _inSlot = false; _returning = false; _prevX = _minX;
         if (deny) { yield return new WaitForSeconds(0.6f); SetLights(false, false); _status.text = "Please Insert Card"; }
     }
 
