@@ -119,3 +119,17 @@ __pycache__/
 /Recovered/ExportedProject/Obj/
 /Recovered/ExportedProject/Logs/
 /Recovered/ExportedProject/UserSettings/
+
+# Unity 6 MVP (AmongUsUnity): derived data, builds and original game assets
+/AmongUsUnity/Library/
+/AmongUsUnity/Temp/
+/AmongUsUnity/Logs/
+/AmongUsUnity/UserSettings/
+/AmongUsUnity/Builds/
+/AmongUsUnity/obj/
+/AmongUsUnity/*.csproj
+/AmongUsUnity/*.sln
+/AmongUsUnity/Assets/Resources/Art/
+/AmongUsUnity/Assets/Resources/Audio/
+/AmongUsUnity/Assets/Resources/Art.meta
+/AmongUsUnity/Assets/Resources/Audio.meta
