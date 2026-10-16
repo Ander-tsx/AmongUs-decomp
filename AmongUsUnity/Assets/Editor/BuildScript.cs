@@ -16,6 +16,8 @@ public static class BuildScript
         var cam = new GameObject("Main Camera") { tag = "MainCamera" };
         cam.AddComponent<Camera>();
         cam.AddComponent<AudioListener>();
+        var ship = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Original/Ship/SkeldShip.prefab"));
+        ship.name = "SkeldShip";
         EditorSceneManager.SaveScene(scene, ScenePath);
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
 

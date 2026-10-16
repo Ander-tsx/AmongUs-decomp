@@ -21,22 +21,22 @@ namespace AmongUsLan
         public GameObject Go;
         public SpriteRenderer Renderer;
         public Rigidbody2D Body;
-        public readonly HashSet<int> Tasks = new HashSet<int>();     // host: assigned tasks
-        public readonly HashSet<int> TasksDone = new HashSet<int>();
+        public readonly List<GameTask> Tasks = new List<GameTask>();   // host: authoritative copy
         public int Vote = -2;           // -2 none, -1 skip, otherwise player id
         public bool UsedButton;
     }
 
     /// <summary>
-    /// Host-authoritative Among Us-style game over LAN. Host is player id 0 and runs the rules;
-    /// clients send commands (POS/KILL/TASK/REPORT/VOTE) and mirror the events the host broadcasts.
+    /// Host-authoritative Among Us over LAN. Host is player id 0 and runs the rules; clients send commands
+    /// (POS/KILL/TASK/REPORT/VOTE) and mirror the events the host broadcasts. The world is the original Skeld.
     /// </summary>
     public class Game : MonoBehaviour
     {
-        // ---- tuning ----
-        const float MoveSpeed = 3.6f, KillRange = 1.8f, ReportRange = 2.2f, TaskRange = 1.4f;
-        const float TaskHoldSeconds = 2.0f, MeetingSeconds = 45f, ResultSeconds = 6f, NetRate = 1f / 15f;
-        const int TasksPerCrew = 3;
+        // ---- tuning (original Player prefab / default game settings) ----
+        const float MoveSpeed = 2.5f, KillRange = 1.8f, ReportRange = 1.5f;
+        const float BodyColliderRadius = 0.156f, BodyColliderOffsetY = -0.255f;
+        const float TaskHoldSeconds = 1.0f, MeetingSeconds = 45f, ResultSeconds = 6f, NetRate = 1f / 15f;
+        const int CommonTasks = 1, ShortTasks = 2, LongTasks = 1;
 
         // ---- state ----
         Phase _phase = Phase.Menu;
@@ -50,32 +50,39 @@ namespace AmongUsLan
 
         // round state
         int _tasksDone, _tasksTotal, _impostorCount;
-        readonly List<int> _myTasks = new List<int>();
-        readonly HashSet<int> _myDone = new HashSet<int>();
+        readonly List<GameTask> _myTasks = new List<GameTask>();
         readonly Dictionary<int, GameObject> _bodies = new Dictionary<int, GameObject>();
         float _killCd, _taskHold, _meetingTimer, _resultTimer, _netTimer;
         string _resultText = "", _endText = "";
         int _myVote = -2;
         readonly HashSet<int> _votedIds = new HashSet<int>();
         int _meetingCaller = -1, _meetingBody = -1;
-        bool _pendingEndCheck;
         int _endWinner = -1;
         string _endImpostors = "";
+        float KillCooldown = 20f;
 
-        // UI
+        // UI / presentation
         string _nameField = "Player";
         string _ipField = "127.0.0.1";
         Camera _cam;
         AudioSource _audio;
         readonly Dictionary<string, AudioClip> _clips = new Dictionary<string, AudioClip>();
         float _stepTimer;
+        Texture2D _white;
 
         // bot / automated testing (command-line driven)
-        bool _bot, _autoHost, _autoJoin;
-        float KillCooldown = 20f;
+        bool _bot, _autoHost, _autoJoin, _botTeleport;
         float _botDirTimer;
         Vector2 _botDir;
         float _autoTimer;
+        string _shotPath;
+        float _shotAt;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static void EarlySettings()
+        {
+            DateHide.SeasonalEnabled = !Environment.GetCommandLineArgs().Contains("-noseasonal");
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -88,7 +95,7 @@ namespace AmongUsLan
         {
             Application.runInBackground = true;
             Application.targetFrameRate = 60;
-            ShipMap.Build();
+            WorldMap.Init();
             _cam = Camera.main;
             if (_cam == null)
             {
@@ -96,22 +103,26 @@ namespace AmongUsLan
                 _cam = go.AddComponent<Camera>();
             }
             _cam.orthographic = true;
-            _cam.orthographicSize = 5.5f;
-            _cam.backgroundColor = new Color(0.02f, 0.02f, 0.05f);
+            _cam.orthographicSize = 3f;
+            _cam.backgroundColor = Color.black;
             _cam.clearFlags = CameraClearFlags.SolidColor;
-            _cam.transform.position = new Vector3(ShipMap.SpawnCenter.x, ShipMap.SpawnCenter.y, -10);
+            _cam.transform.position = new Vector3(WorldMap.SpawnCenter.x, WorldMap.SpawnCenter.y, -10);
             _audio = gameObject.AddComponent<AudioSource>();
             foreach (var c in Resources.LoadAll<AudioClip>("Audio")) _clips[c.name] = c;
+            _white = Texture2D.whiteTexture;
 
             var args = Environment.GetCommandLineArgs();
             _bot = args.Contains("-bot");
+            _botTeleport = args.Contains("-teleport");
             if (args.Contains("-slowkill")) KillCooldown = 60f;
             _autoHost = args.Contains("-autohost");
             _autoJoin = args.Contains("-autojoin");
-            int ni = Array.IndexOf(args, "-name");
-            if (ni >= 0 && ni + 1 < args.Length) _nameField = args[ni + 1];
-            int ii = Array.IndexOf(args, "-ip");
-            if (ii >= 0 && ii + 1 < args.Length) _ipField = args[ii + 1];
+            string Arg(string n) { int i = Array.IndexOf(args, n); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
+            if (Arg("-name") != null) _nameField = Arg("-name");
+            if (Arg("-ip") != null) _ipField = Arg("-ip");
+            _shotPath = Arg("-shot");
+            if (Arg("-shotAfter") != null) _shotAt = float.Parse(Arg("-shotAfter"), CultureInfo.InvariantCulture);
+            if (_shotPath != null && _shotAt <= 0) _shotAt = 6f;
 
             _discovery = new LanDiscovery();
             _discovery.StartListening();
@@ -158,7 +169,7 @@ namespace AmongUsLan
             Debug.Log("[LAN] joining " + ip);
         }
 
-        static string Clean(string s) => (s ?? "").Replace("|", "").Replace(";", "").Replace(",", "").Replace(":", "").Trim();
+        static string Clean(string s) => (s ?? "").Replace("|", "").Replace(";", "").Replace(",", "").Replace(":", "").Replace("~", "").Trim();
 
         // Send a command: host handles it directly, clients forward it.
         void Cmd(string msg)
@@ -187,6 +198,7 @@ namespace AmongUsLan
         PlayerInfo AddPlayer(int id, string name, int color)
         {
             var pi = new PlayerInfo { Id = id, Name = name, Color = color };
+            pi.Pos = pi.TargetPos = WorldMap.SpawnPos(id, 10);
             _players[id] = pi;
             return pi;
         }
@@ -204,8 +216,8 @@ namespace AmongUsLan
                 p.Body.freezeRotation = true;
                 p.Body.interpolation = RigidbodyInterpolation2D.Interpolate;
                 var col = p.Go.AddComponent<CircleCollider2D>();
-                col.radius = 0.28f;
-                col.offset = new Vector2(0, -0.2f);
+                col.radius = BodyColliderRadius;
+                col.offset = new Vector2(0, BodyColliderOffsetY);
             }
             p.Go.transform.position = p.Pos;
         }
@@ -239,8 +251,7 @@ namespace AmongUsLan
                 case "HELLO":
                     if (_phase != Phase.Lobby) { _peer.Send(from, "REFUSED|Partida en curso"); break; }
                     if (_players.Count >= Palette.Colors.Length) { _peer.Send(from, "REFUSED|Sala llena"); break; }
-                    var np = AddPlayer(from, Clean(a.Length > 1 ? a[1] : "Player"), FreeColor());
-                    np.Pos = np.TargetPos = SpawnPos(from);
+                    AddPlayer(from, Clean(a.Length > 1 ? a[1] : "Player"), FreeColor());
                     _peer.Send(from, "WELCOME|" + from);
                     BroadcastLobby();
                     break;
@@ -269,12 +280,6 @@ namespace AmongUsLan
         static float F(string s) => float.Parse(s, CultureInfo.InvariantCulture);
         static string S(float f) => f.ToString("0.###", CultureInfo.InvariantCulture);
 
-        Vector2 SpawnPos(int index)
-        {
-            float ang = index * Mathf.PI * 2f / 12f;
-            return ShipMap.SpawnCenter + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * 2.4f;
-        }
-
         void HostStartGame()
         {
             if (_phase != Phase.Lobby) return;
@@ -283,6 +288,7 @@ namespace AmongUsLan
             _impostorCount = n >= 7 ? 2 : (n >= 2 ? 1 : 0);
             var shuffled = ids.OrderBy(_ => UnityEngine.Random.value).ToList();
             var imps = new HashSet<int>(shuffled.Take(_impostorCount));
+            var rng = new System.Random();
             _tasksDone = 0;
             _tasksTotal = 0;
             foreach (var p in _players.Values)
@@ -290,19 +296,18 @@ namespace AmongUsLan
                 p.Alive = true;
                 p.Impostor = imps.Contains(p.Id);
                 p.Tasks.Clear();
-                p.TasksDone.Clear();
                 p.Vote = -2;
+                p.UsedButton = false;
                 if (!p.Impostor)
                 {
-                    var pick = Enumerable.Range(0, ShipMap.Tasks.Length).OrderBy(_ => UnityEngine.Random.value).Take(TasksPerCrew);
-                    foreach (var t in pick) p.Tasks.Add(t);
-                    _tasksTotal += p.Tasks.Count;
+                    p.Tasks.AddRange(TaskCatalog.Generate(rng, CommonTasks, ShortTasks, LongTasks));
+                    _tasksTotal += p.Tasks.Sum(t => t.Steps.Length);
                 }
             }
             string impCsv = string.Join(",", imps);
             foreach (var p in _players.Values)
             {
-                string tasks = string.Join(",", p.Tasks);
+                string tasks = string.Join("~", p.Tasks.Select(t => t.Encode()));
                 EmitTo(p.Id, "START|" + (p.Impostor ? impCsv : "") + "|" + tasks + "|" + _tasksTotal + "|" + _impostorCount);
             }
         }
@@ -320,13 +325,14 @@ namespace AmongUsLan
             HostCheckWin();
         }
 
-        void HostTask(int who, int idx)
+        void HostTask(int who, int taskIdx)
         {
             if (_phase != Phase.Playing) return;
             var p = Get(who);
-            if (p == null || p.Impostor || !p.Tasks.Contains(idx) || !p.TasksDone.Add(idx)) return;
+            if (p == null || p.Impostor || taskIdx < 0 || taskIdx >= p.Tasks.Count || p.Tasks[taskIdx].Complete) return;
+            p.Tasks[taskIdx].Done++;
             _tasksDone++;
-            EmitTo(who, "TASKOK|" + idx);
+            EmitTo(who, "TASKOK|" + taskIdx);
             Emit("PROG|" + _tasksDone + "|" + _tasksTotal);
             HostCheckWin();
         }
@@ -342,7 +348,7 @@ namespace AmongUsLan
             }
             else
             {
-                if (p.UsedButton || Vector2.Distance(p.TargetPos, ShipMap.EmergencyButton) > ReportRange + 1f) return;
+                if (p.UsedButton || Vector2.Distance(p.TargetPos, WorldMap.EmergencyButtonPos) > WorldMap.EmergencyButtonRange + 1f) return;
                 p.UsedButton = true;
             }
             foreach (var q in _players.Values) q.Vote = -2;
@@ -433,17 +439,20 @@ namespace AmongUsLan
                         {
                             v.Alive = false;
                             SpawnBody(id, new Vector2(F(a[2]), F(a[3])));
-                            if (v == _me) { _killCd = 0; }
                         }
                         Play("impostor_kill");
                         break;
                     }
                 case "TASKOK":
-                    _myDone.Add(int.Parse(a[1]));
-                    Play("Panel_TempButton");
-                    break;
+                    {
+                        int idx = int.Parse(a[1]);
+                        if (idx >= 0 && idx < _myTasks.Count) _myTasks[idx].Done++;
+                        Play("Panel_TempButton");
+                        break;
+                    }
                 case "PROG":
                     _tasksDone = int.Parse(a[1]); _tasksTotal = int.Parse(a[2]);
+                    Debug.Log("[LAN] tasks " + _tasksDone + "/" + _tasksTotal);
                     break;
                 case "LEAVE":
                     {
@@ -496,8 +505,9 @@ namespace AmongUsLan
                     break;
                 case "END":
                     _endWinner = int.Parse(a[1]);
+                    Debug.Log("[LAN] END winner=" + (_endWinner == 0 ? "crew" : "impostors"));
                     _endImpostors = a.Length > 2 ? a[2] : "";
-                    _endText = (_endWinner == 0 ? "¡Ganan los Tripulantes!" : "¡Ganan los Impostores!");
+                    _endText = _endWinner == 0 ? "¡Ganan los Tripulantes!" : "¡Ganan los Impostores!";
                     SetPhase(Phase.Ended);
                     break;
                 case "LOBBYBACK":
@@ -518,9 +528,8 @@ namespace AmongUsLan
                 if (!_players.TryGetValue(id, out var p)) p = AddPlayer(id, f[1], int.Parse(f[2]));
                 p.Name = f[1];
                 int col = int.Parse(f[2]);
-                if (p.Color != col && p.Renderer != null) { p.Color = col; p.Renderer.sprite = PlayerArt.Get(col); }
+                if (p.Color != col && p.Renderer != null) p.Renderer.sprite = PlayerArt.Get(col);
                 p.Color = col;
-                if (p.Pos == Vector2.zero) p.Pos = p.TargetPos = SpawnPos(id);
             }
             foreach (var id in _players.Keys.Where(i => !seen.Contains(i)).ToList())
             {
@@ -533,15 +542,18 @@ namespace AmongUsLan
         void ApplyStart(string[] a)
         {
             var imps = a[1].Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
-            _myTasks.Clear(); _myDone.Clear();
-            foreach (var t in a[2].Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)) _myTasks.Add(int.Parse(t));
+            _myTasks.Clear();
+            foreach (var t in a[2].Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries)) _myTasks.Add(GameTask.Decode(t));
             _tasksTotal = int.Parse(a[3]);
             _impostorCount = int.Parse(a[4]);
             _tasksDone = 0;
             ClearRound();
-            foreach (var p in _players.Values) { p.Alive = true; p.Impostor = false; p.UsedButton = false; }
-            foreach (var i in imps) if (_players.TryGetValue(i, out var ip)) ip.Impostor = true;
-            if (_me != null && imps.Contains(_me.Id)) _me.Impostor = true;
+            // The host already holds the authoritative roles; clients only learn their own (and partners').
+            if (!_isHost)
+            {
+                foreach (var p in _players.Values) { p.Alive = true; p.Impostor = false; p.UsedButton = false; }
+                foreach (var i in imps) if (_players.TryGetValue(i, out var ip)) ip.Impostor = true;
+            }
             ResetPositions();
             _killCd = 10f;
             SetPhase(Phase.Playing);
@@ -564,9 +576,10 @@ namespace AmongUsLan
 
         void ResetPositions()
         {
-            foreach (var p in _players.Values)
+            int i = 0, n = _players.Count;
+            foreach (var p in _players.Values.OrderBy(x => x.Id))
             {
-                p.Pos = p.TargetPos = SpawnPos(p.Id);
+                p.Pos = p.TargetPos = WorldMap.SpawnPos(i++, n);
                 if (p.Go != null) p.Go.transform.position = p.Pos;
             }
         }
@@ -587,7 +600,7 @@ namespace AmongUsLan
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = PlayerArt.Get(p != null ? p.Color : 0);
             sr.color = new Color(0.8f, 0.8f, 0.8f);
-            sr.sortingOrder = -10;
+            sr.sortingOrder = 50;
             _bodies[owner] = go;
         }
 
@@ -610,8 +623,54 @@ namespace AmongUsLan
             if (_phase == Phase.Meeting && !_isHost) _meetingTimer -= Time.deltaTime;
             if (_phase == Phase.Result && !_isHost) _resultTimer -= Time.deltaTime;
 
+            UpdateHighlights();
             FollowCamera();
         }
+
+        // Task consoles are outlined yellow; the one in reach turns white (as in the original).
+        readonly MaterialPropertyBlock _mpb = new MaterialPropertyBlock();
+        readonly HashSet<Console> _lit = new HashSet<Console>();
+        static readonly Color TaskYellow = new Color(1f, 0.92f, 0.016f, 1f);
+
+        void SetOutline(Console c, bool on, Color col)
+        {
+            var r = c.Image;
+            if (r == null) return;
+            r.GetPropertyBlock(_mpb);
+            _mpb.SetFloat("_Outline", on ? 1f : 0f);
+            _mpb.SetColor("_OutlineColor", col);
+            r.SetPropertyBlock(_mpb);
+        }
+
+        void UpdateHighlights()
+        {
+            var want = new Dictionary<Console, Color>();
+            if (_phase == Phase.Playing && _me != null && !_me.Impostor)
+            {
+                foreach (var t in _myTasks)
+                {
+                    if (t.Complete) continue;
+                    var c = WorldMap.FindConsole(t.Current.Console, t.Current.Room);
+                    if (c != null) want[c] = TaskYellow;
+                }
+                NearestTask(out var near);
+                if (near != null) want[near] = Color.white;
+            }
+            foreach (var c in _lit.Where(c => !want.ContainsKey(c)).ToList()) { SetOutline(c, false, Color.white); _lit.Remove(c); }
+            foreach (var kv in want) { SetOutline(kv.Key, true, kv.Value); _lit.Add(kv.Key); }
+        }
+
+        void LateUpdate()
+        {
+            if (_shotPath != null && Time.timeSinceLevelLoad > _shotAt)
+            {
+                ScreenCapture.CaptureScreenshot(_shotPath);
+                _shotPath = null;
+                Invoke(nameof(QuitNow), 1.0f);
+            }
+        }
+
+        void QuitNow() { Application.Quit(); }
 
         void PumpNetwork()
         {
@@ -645,7 +704,6 @@ namespace AmongUsLan
 
         void HostTick()
         {
-            // Phase timers owned by the host.
             if (_phase == Phase.Meeting)
             {
                 _meetingTimer -= Time.deltaTime;
@@ -660,8 +718,7 @@ namespace AmongUsLan
                 }
             }
 
-            // Mirror transforms of the host's own player into the table, then broadcast state.
-            if (_me != null) { _me.TargetPos = _me.Pos; }
+            if (_me != null) _me.TargetPos = _me.Pos;
             _netTimer -= Time.deltaTime;
             if (_netTimer <= 0f && _players.Count > 1 && (_phase == Phase.Lobby || _phase == Phase.Playing))
             {
@@ -682,7 +739,7 @@ namespace AmongUsLan
             p.Renderer.enabled = visible;
             p.Renderer.flipX = p.Flip;
             p.Renderer.color = p.Alive ? Color.white : new Color(1, 1, 1, 0.45f);
-            p.Renderer.sortingOrder = 100 - Mathf.RoundToInt(p.Go.transform.position.y * 4f);
+            p.Renderer.sortingOrder = 100 - Mathf.RoundToInt(p.Go.transform.position.y * 10f);
             if (p.Id == _myId)
             {
                 if (p.Body != null)
@@ -697,9 +754,28 @@ namespace AmongUsLan
                 p.Pos = Vector2.Lerp(p.Pos, p.TargetPos, 1f - Mathf.Exp(-14f * Time.deltaTime));
                 p.Go.transform.position = p.Pos;
             }
-            // little walking bob
             float bob = p.Moving && p.Alive ? Mathf.Abs(Mathf.Sin(Time.time * 12f)) * 0.06f : 0f;
             p.Renderer.transform.localScale = new Vector3(1f, 1f + bob, 1f);
+        }
+
+        // ---- tasks ----
+
+        /// <summary>The nearest console the local player can use for one of its pending task steps.</summary>
+        int NearestTask(out Console console)
+        {
+            console = null;
+            int best = -1; float bd = float.MaxValue;
+            for (int i = 0; i < _myTasks.Count; i++)
+            {
+                var t = _myTasks[i];
+                if (t.Complete) continue;
+                var c = WorldMap.FindConsole(t.Current.Console, t.Current.Room);
+                if (c == null) continue;
+                float d = Vector2.Distance(c.transform.position, _me.Pos);
+                float range = Mathf.Max(c.usableDistance, 0.8f);
+                if (d <= range && d < bd) { bd = d; best = i; console = c; }
+            }
+            return best;
         }
 
         void LocalControl()
@@ -732,50 +808,31 @@ namespace AmongUsLan
 
             if (_killCd > 0f) _killCd -= Time.deltaTime;
 
-            // Kill
             if (_me.Impostor && _me.Alive && _killCd <= 0f && (Input.GetKeyDown(KeyCode.Q) || _bot))
             {
                 var target = NearestPlayer(KillRange, p => p.Alive && !p.Impostor && p != _me);
                 if (target != null) { Cmd("KILL|" + target.Id); _killCd = KillCooldown; }
             }
 
-            // Report body / emergency button
             if (_me.Alive && (Input.GetKeyDown(KeyCode.R) || (_bot && !_me.Impostor)))
             {
                 var body = _bodies.Where(kv => Vector2.Distance(kv.Value.transform.position, _me.Pos) <= ReportRange)
                                   .Select(kv => (int?)kv.Key).FirstOrDefault();
                 if (body.HasValue) Cmd("REPORT|" + body.Value);
             }
-            if (_me.Alive && Input.GetKeyDown(KeyCode.F) && Vector2.Distance(ShipMap.EmergencyButton, _me.Pos) <= ReportRange)
+            if (_me.Alive && Input.GetKeyDown(KeyCode.F) && Vector2.Distance(WorldMap.EmergencyButtonPos, _me.Pos) <= WorldMap.EmergencyButtonRange)
                 Cmd("REPORT|-1");
 
-            // Tasks: hold E near an assigned, unfinished station.
             if (!_me.Impostor)
             {
-                int near = NearestTask();
-                if (near >= 0 && (Input.GetKey(KeyCode.E) || Input.GetKey(KeyCode.Space) || _bot))
+                int idx = NearestTask(out _);
+                if (idx >= 0 && (Input.GetKey(KeyCode.E) || Input.GetKey(KeyCode.Space) || _bot))
                 {
                     _taskHold += Time.deltaTime;
-                    if (_taskHold >= TaskHoldSeconds)
-                    {
-                        _taskHold = 0;
-                        Cmd("TASK|" + near);
-                    }
+                    if (_taskHold >= TaskHoldSeconds) { _taskHold = 0; Cmd("TASK|" + idx); }
                 }
                 else _taskHold = 0;
             }
-        }
-
-        int NearestTask()
-        {
-            int best = -1; float bd = TaskRange;
-            foreach (var t in _myTasks)
-            {
-                if (_myDone.Contains(t)) continue;
-                float d = Vector2.Distance(ShipMap.Tasks[t].Pos, _me.Pos);
-                if (d <= bd) { bd = d; best = t; }
-            }
-            return best;
         }
 
         PlayerInfo NearestPlayer(float range, Func<PlayerInfo, bool> filter)
@@ -794,7 +851,7 @@ namespace AmongUsLan
         {
             Vector3 target = (_me != null && _phase != Phase.Menu)
                 ? new Vector3(_me.Pos.x, _me.Pos.y, -10)
-                : new Vector3(ShipMap.SpawnCenter.x, ShipMap.SpawnCenter.y, -10);
+                : new Vector3(WorldMap.SpawnCenter.x, WorldMap.SpawnCenter.y, -10);
             _cam.transform.position = Vector3.Lerp(_cam.transform.position, target, 1f - Mathf.Exp(-10f * Time.deltaTime));
         }
 
@@ -819,11 +876,18 @@ namespace AmongUsLan
                     _botDirTimer = 0.2f;
                     return _botDir = ((Vector2)any.transform.position - _me.Pos).normalized;
                 }
-                if (_me != null && _phase == Phase.Playing && !_me.Impostor && _myTasks.Count > 0 && UnityEngine.Random.value < 0.6f)
+                if (_me != null && _phase == Phase.Playing && !_me.Impostor)
                 {
-                    int t = -1;
-                    foreach (var x in _myTasks) if (!_myDone.Contains(x)) { t = x; break; }
-                    if (t >= 0) { _botDir = (ShipMap.Tasks[t].Pos - _me.Pos).normalized; return _botDir; }
+                    foreach (var t in _myTasks)
+                    {
+                        if (t.Complete) continue;
+                        var c = WorldMap.FindConsole(t.Current.Console, t.Current.Room);
+                        if (c == null) continue;
+                        // Bots have no pathfinding: with -teleport they hop to the console instead of walking.
+                        if (_botTeleport && _me.Body != null) _me.Body.position = (Vector2)c.transform.position + new Vector2(0f, -0.3f);
+                        _botDirTimer = 0.3f;
+                        return _botDir = ((Vector2)c.transform.position - _me.Pos).normalized * 0.01f;
+                    }
                 }
                 _botDir = UnityEngine.Random.insideUnitCircle.normalized;
             }
@@ -836,12 +900,11 @@ namespace AmongUsLan
             if (_phase == Phase.Menu && _autoHost && _autoTimer > 0.5f) HostGame();
             if (_phase == Phase.Menu && _autoJoin && _peer == null && _autoTimer > 2f) { _autoTimer = 1f; JoinGame(_ipField); }
             if (_isHost && _autoHost && _phase == Phase.Lobby && _players.Count >= (Environment.GetCommandLineArgs().Contains("-four") ? 4 : 2) && _autoTimer > 8f) HostStartGame();
-            if (_bot && _phase == Phase.Meeting && _me != null && _me.Alive && _myVote == -2 && _autoTimer > 0f)
+            if (_bot && _phase == Phase.Meeting && _me != null && _me.Alive && _myVote == -2)
             {
                 _myVote = -1;
                 Cmd("VOTE|-1");
             }
-            if (_isHost && _autoHost && _phase == Phase.Ended && _autoTimer > 0f) { /* stay on end screen for logs */ }
         }
 
         // =====================================================================================
@@ -866,7 +929,7 @@ namespace AmongUsLan
             GUI.matrix = Matrix4x4.Scale(new Vector3(s, s, 1));
             float W = Screen.width / s, H = 720f;
 
-            DrawNames(s);
+            DrawWorldLabels(s);
 
             switch (_phase)
             {
@@ -879,35 +942,29 @@ namespace AmongUsLan
             }
         }
 
-        void DrawNames(float s)
+        void DrawWorldLabels(float s)
         {
             if (_phase != Phase.Lobby && _phase != Phase.Playing) return;
             var st = new GUIStyle(GUI.skin.label) { fontSize = 14, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             foreach (var p in _players.Values)
             {
                 if (p.Renderer == null || !p.Renderer.enabled) continue;
-                var sp = _cam.WorldToScreenPoint(p.Pos + Vector2.up * 0.75f);
+                var sp = _cam.WorldToScreenPoint(p.Pos + Vector2.up * 0.5f);
                 var r = new Rect(sp.x / s - 80, (Screen.height - sp.y) / s - 12, 160, 24);
                 bool knownImp = p.Impostor && _me != null && _me.Impostor;
                 st.normal.textColor = knownImp ? new Color(1f, 0.25f, 0.25f) : Color.white;
                 GUI.Label(r, p.Name, st);
             }
-            foreach (var room in ShipMap.Rooms)
+            if (_phase != Phase.Playing || _me == null || _me.Impostor) return;
+            st.fontSize = 22;
+            st.normal.textColor = new Color(1f, 0.9f, 0.2f);
+            foreach (var t in _myTasks)
             {
-                if (!room.Label) continue;
-                var sp = _cam.WorldToScreenPoint(new Vector3(room.Rect.center.x, room.Rect.yMax - 0.7f, 0));
-                st.normal.textColor = new Color(1, 1, 1, 0.55f);
-                GUI.Label(new Rect(sp.x / s - 100, (Screen.height - sp.y) / s - 12, 200, 24), room.Name, st);
-            }
-            foreach (var t in ShipMap.Tasks)
-            {
-                if (_me == null || _me.Impostor) { }
-                var sp = _cam.WorldToScreenPoint(t.Pos + Vector2.up * 0.7f);
-                st.normal.textColor = new Color(1f, 0.9f, 0.4f, 0.8f);
-                bool mine = _phase == Phase.Playing && _myTasks.Contains(Array.IndexOf(ShipMap.Tasks, t)) && !_myDone.Contains(Array.IndexOf(ShipMap.Tasks, t));
-                if (_phase == Phase.Playing && !mine) continue;
-                if (_phase == Phase.Lobby) continue;
-                GUI.Label(new Rect(sp.x / s - 100, (Screen.height - sp.y) / s - 12, 200, 24), t.Name, st);
+                if (t.Complete) continue;
+                var c = WorldMap.FindConsole(t.Current.Console, t.Current.Room);
+                if (c == null) continue;
+                var sp = _cam.WorldToScreenPoint(c.transform.position + Vector3.up * 0.5f);
+                GUI.Label(new Rect(sp.x / s - 20, (Screen.height - sp.y) / s - 14, 40, 28), "!", st);
             }
         }
 
@@ -946,7 +1003,7 @@ namespace AmongUsLan
             foreach (var p in _players.Values.OrderBy(p => p.Id))
             {
                 var prev = GUI.color; GUI.color = Palette.Colors[p.Color % Palette.Colors.Length];
-                GUI.Label(new Rect(30, y, 280, 28), "" + p.Name + (p.Id == 0 ? " (anfitrión)" : ""), _small);
+                GUI.Label(new Rect(30, y, 280, 28), p.Name + (p.Id == 0 ? " (anfitrión)" : ""), _small);
                 GUI.color = prev; y += 28;
             }
             if (_isHost)
@@ -961,11 +1018,10 @@ namespace AmongUsLan
         void DrawHud(float W, float H)
         {
             if (_me == null) return;
-            // Task progress bar
             GUI.Box(new Rect(20, 20, 360, 26), "");
             float frac = _tasksTotal > 0 ? (float)_tasksDone / _tasksTotal : 0f;
             var prev = GUI.color; GUI.color = new Color(0.3f, 0.9f, 0.4f);
-            GUI.DrawTexture(new Rect(22, 22, 356 * frac, 22), ShipMap.White.texture);
+            GUI.DrawTexture(new Rect(22, 22, 356 * frac, 22), _white);
             GUI.color = prev;
             GUI.Label(new Rect(24, 20, 360, 26), "  Tareas totales", _small);
 
@@ -978,8 +1034,11 @@ namespace AmongUsLan
             if (!_me.Impostor)
                 foreach (var t in _myTasks)
                 {
-                    bool done = _myDone.Contains(t);
-                    GUI.Label(new Rect(20, y, 380, 24), (done ? "[OK] " : "- ") + ShipMap.Tasks[t].Name, _small); y += 22;
+                    string room = t.RoomName(t.Current.Room);
+                    string line = (t.Complete ? "[OK] " : "- ") + room + ": " + t.Title + (t.Steps.Length > 1 ? " (" + t.Done + "/" + t.Steps.Length + ")" : "");
+                    var p2 = GUI.color; GUI.color = t.Complete ? new Color(0.4f, 1f, 0.4f) : Color.white;
+                    GUI.Label(new Rect(20, y, 420, 24), line, _small); y += 22;
+                    GUI.color = p2;
                 }
             else
             {
@@ -989,20 +1048,20 @@ namespace AmongUsLan
                 GUI.Label(new Rect(20, y, 380, 24), _killCd > 0 ? "Matar en " + Mathf.CeilToInt(_killCd) + "s" : "Matar: Q (listo)", _small);
             }
 
-            if (_me.Alive)
+            if (_me.Alive || !_me.Impostor)
             {
-                int near = _me.Impostor ? -1 : NearestTask();
+                int near = _me.Impostor ? -1 : NearestTask(out _);
                 if (near >= 0)
                 {
-                    GUI.Label(new Rect(W / 2 - 250, H - 110, 500, 30), "Mantén E: " + ShipMap.Tasks[near].Name, _center);
+                    GUI.Label(new Rect(W / 2 - 250, H - 110, 500, 30), "Mantén E: " + _myTasks[near].Title, _center);
                     GUI.Box(new Rect(W / 2 - 120, H - 75, 240, 20), "");
                     GUI.color = new Color(0.9f, 0.9f, 0.3f);
-                    GUI.DrawTexture(new Rect(W / 2 - 118, H - 73, 236 * (_taskHold / TaskHoldSeconds), 16), ShipMap.White.texture);
+                    GUI.DrawTexture(new Rect(W / 2 - 118, H - 73, 236 * (_taskHold / TaskHoldSeconds), 16), _white);
                     GUI.color = Color.white;
                 }
-                else if (_bodies.Any(kv => Vector2.Distance(kv.Value.transform.position, _me.Pos) <= ReportRange))
+                else if (_me.Alive && _bodies.Any(kv => Vector2.Distance(kv.Value.transform.position, _me.Pos) <= ReportRange))
                     GUI.Label(new Rect(W / 2 - 250, H - 80, 500, 30), "R: Reportar cuerpo", _center);
-                else if (Vector2.Distance(ShipMap.EmergencyButton, _me.Pos) <= ReportRange && !_me.UsedButton)
+                else if (_me.Alive && Vector2.Distance(WorldMap.EmergencyButtonPos, _me.Pos) <= WorldMap.EmergencyButtonRange && !_me.UsedButton)
                     GUI.Label(new Rect(W / 2 - 250, H - 80, 500, 30), "F: Reunión de emergencia", _center);
             }
         }
@@ -1020,7 +1079,7 @@ namespace AmongUsLan
             {
                 var prev = GUI.color;
                 GUI.color = p.Alive ? Palette.Colors[p.Color % Palette.Colors.Length] : new Color(0.5f, 0.5f, 0.5f);
-                GUI.Label(new Rect(W / 2 - 330, y, 400, 36), "" + p.Name + (p.Alive ? "" : "  (muerto)") + (_votedIds.Contains(p.Id) ? "  [OK] voto" : ""), _mid);
+                GUI.Label(new Rect(W / 2 - 330, y, 400, 36), p.Name + (p.Alive ? "" : "  (muerto)") + (_votedIds.Contains(p.Id) ? "  [OK] voto" : ""), _mid);
                 GUI.color = prev;
                 if (canVote && p.Alive && GUI.Button(new Rect(W / 2 + 120, y, 200, 34), "Votar", _small))
                 { _myVote = p.Id; Cmd("VOTE|" + p.Id); }
