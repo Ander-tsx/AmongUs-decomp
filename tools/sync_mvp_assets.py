@@ -9,7 +9,7 @@ from pathlib import Path
 
 AUDIO = ['impostor_kill', 'Report_BodyFound', 'alarm_emergencymeeting', 'EjectSplash', 'RoleReveal_Crewmate',
          'RoleReveal_Impostor', 'FootstepMetal01', 'FootstepMetal02', 'FootstepMetal03', 'FootstepMetal04',
-         'Maiden Voyage - Theme of Skeld', 'Panel_TempButton', 'Alarm_sabotage', 'door_close', 'eject_text']
+         'Maiden Voyage - Theme of Skeld', 'Panel_TempButton', 'Alarm_sabotage', 'door_close', 'eject_text', 'Vent_Enter']
 
 
 def main():
@@ -23,7 +23,13 @@ def main():
     (dst / 'Art').mkdir(parents=True, exist_ok=True)
     shutil.copy(src / 'Texture2D/ClassicPlayerAnimations.png', dst / 'Art/ClassicPlayerAnimations.bytes')
     for name in AUDIO:
-        shutil.copy(src / 'AudioClip' / f'{name}.ogg', dst / 'Audio' / (name.replace(' ', '_').replace('-', '') + '.ogg'))
+        for ext in ('.ogg', '.wav'):
+            f = src / 'AudioClip' / f'{name}{ext}'
+            if f.exists():
+                shutil.copy(f, dst / 'Audio' / (name.replace(' ', '_').replace('-', '') + ext))
+                break
+        else:
+            print('missing audio', name)
     print('Assets copied to', dst)
 
 

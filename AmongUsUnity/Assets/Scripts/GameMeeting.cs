@@ -71,7 +71,7 @@ namespace AmongUsLan
             var sb = _ui.Sprite("button_skipVote", _skipArea.T, Vector2.zero, 10, 1.6f);
             _skipArea.Base = sb;
             _skipArea.Btn = _ui.Button(sb, () => SelectVote(-1), new Vector2(1.8f, 0.5f));
-            _ui.Text("Skip Vote", _skipArea.T, new Vector2(0, 0), 0.22f, Color.black, TextAnchor.MiddleCenter, 12, true);
+            _ui.Text(Loc.T("Skip Vote"), _skipArea.T, new Vector2(0, 0), 0.22f, Color.black, TextAnchor.MiddleCenter, 12, true);
             _skipArea.Votes = _ui.Group("votes", _skipArea.T);
             _skipArea.Votes.localPosition = new Vector2(1.2f, 0);
             _skipArea.Megaphone = null;
@@ -188,8 +188,8 @@ namespace AmongUsLan
 
             if (inMeeting && _meet != null)
             {
-                _meetInfoText.text = (_meetingBody >= 0 ? "Who died?" : "Who is the Impostor?");
-                _meetTimerText.text = "Voting Ends: " + Mathf.Max(0, Mathf.CeilToInt(_meetingTimer)) + "s";
+                _meetInfoText.text = (_meetingBody >= 0 ? Loc.T("Who died?") : Loc.T("Who is the Impostor?"));
+                _meetTimerText.text = Loc.T("Voting Ends: ") + Mathf.Max(0, Mathf.CeilToInt(_meetingTimer)) + "s";
                 bool canVote = _me != null && _me.Alive && _myVote == -2;
                 foreach (var a in _areas)
                 {

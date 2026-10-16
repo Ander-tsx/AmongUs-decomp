@@ -33,3 +33,4 @@ closeButton
 buttonClick
 buttonEnterText
 report
+LOGO-AU

@@ -24,10 +24,10 @@ namespace AmongUsLan
             _ui.Rect(_intro, Vector2.zero, new Vector2(w * 2 + 2, h * 2 + 2), Color.black, 200);
             var bar = imp ? new Color(0.78f, 0.07f, 0.07f) : new Color(0.33f, 0.62f, 0.82f);
             _ui.Rect(_intro, new Vector2(0, -0.7f), new Vector2(w * 2 + 2, 2.2f), bar, 201);
-            var title = _ui.Text(imp ? "Impostor" : "Crewmate", _intro, new Vector2(0, 1.05f), 1.2f, imp ? new Color(0.9f, 0.1f, 0.1f) : Color.white, TextAnchor.MiddleCenter, 205, true);
+            var title = _ui.Text(imp ? Loc.T("Impostor") : Loc.T("Crewmate"), _intro, new Vector2(0, 1.05f), 1.2f, imp ? new Color(0.9f, 0.1f, 0.1f) : Color.white, TextAnchor.MiddleCenter, 205, true);
             string sub = imp
-                ? (_impostorCount > 1 ? "Kill all Crewmates with your fellow Impostors" : "Sabotage and kill everyone")
-                : "There " + (_impostorCount == 1 ? "is 1 Impostor" : "are " + _impostorCount + " Impostors") + " among us";
+                ? (_impostorCount > 1 ? Loc.T("Kill all Crewmates with your fellow Impostors") : Loc.T("Sabotage and kill everyone"))
+                : (_impostorCount == 1 ? Loc.T("There is 1 Impostor among us") : Loc.F("There are {0} Impostors among us", _impostorCount));
             _ui.Text(sub, _intro, new Vector2(0, 0.25f), 0.38f, Color.white, TextAnchor.MiddleCenter, 205, true);
 
             var lineup = imp ? _players.Values.Where(p => p.Impostor).ToList() : _players.Values.ToList();

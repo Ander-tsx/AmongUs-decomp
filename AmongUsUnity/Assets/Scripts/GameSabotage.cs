@@ -246,16 +246,16 @@ namespace AmongUsLan
             var items = new List<KeyValuePair<string, Action>>();
             if (!_doorsMenu)
             {
-                items.Add(new KeyValuePair<string, Action>("Reactor", () => DoSabotage("Reactor", "")));
-                items.Add(new KeyValuePair<string, Action>("O2", () => DoSabotage("O2", "")));
-                items.Add(new KeyValuePair<string, Action>("Lights", () => DoSabotage("Lights", "")));
-                items.Add(new KeyValuePair<string, Action>("Comms", () => DoSabotage("Comms", "")));
-                items.Add(new KeyValuePair<string, Action>("Doors >", () => { _doorsMenu = true; BuildSabMenu(); }));
+                items.Add(new KeyValuePair<string, Action>(Loc.T("Reactor"), () => DoSabotage("Reactor", "")));
+                items.Add(new KeyValuePair<string, Action>(Loc.T("O2"), () => DoSabotage("O2", "")));
+                items.Add(new KeyValuePair<string, Action>(Loc.T("Lights"), () => DoSabotage("Lights", "")));
+                items.Add(new KeyValuePair<string, Action>(Loc.T("Comms"), () => DoSabotage("Comms", "")));
+                items.Add(new KeyValuePair<string, Action>(Loc.T("Doors >"), () => { _doorsMenu = true; BuildSabMenu(); }));
             }
             else
             {
-                foreach (var r in DoorRooms) { var room = r; items.Add(new KeyValuePair<string, Action>("Doors: " + RoomLabel(r), () => DoSabotage("Doors", ((int)room).ToString()))); }
-                items.Add(new KeyValuePair<string, Action>("< Back", () => { _doorsMenu = false; BuildSabMenu(); }));
+                foreach (var r in DoorRooms) { var room = r; items.Add(new KeyValuePair<string, Action>(Loc.T("Doors: ") + Loc.T(RoomLabel(r)), () => DoSabotage("Doors", ((int)room).ToString()))); }
+                items.Add(new KeyValuePair<string, Action>(Loc.T("< Back"), () => { _doorsMenu = false; BuildSabMenu(); }));
             }
             float y = items.Count * 0.28f - 0.1f;
             _ui.Rect(_sabMenu, new Vector2(w - 2.2f, y - items.Count * 0.28f + 0.3f), new Vector2(2.6f, items.Count * 0.56f + 0.3f), new Color(0, 0, 0, 0.75f), 24);
@@ -300,10 +300,10 @@ namespace AmongUsLan
             {
                 switch (_sab)
                 {
-                    case SabKind.Reactor: msg = "REACTOR MELTDOWN  " + Mathf.CeilToInt(Mathf.Max(0, _sabTimer)) + "s"; break;
-                    case SabKind.O2: msg = "OXYGEN DEPLETED  " + Mathf.CeilToInt(Mathf.Max(0, _sabTimer)) + "s"; break;
-                    case SabKind.Lights: msg = "LIGHTS SABOTAGED"; break;
-                    case SabKind.Comms: msg = "COMMS SABOTAGED"; break;
+                    case SabKind.Reactor: msg = Loc.T("REACTOR MELTDOWN") + "  " + Mathf.CeilToInt(Mathf.Max(0, _sabTimer)) + "s"; break;
+                    case SabKind.O2: msg = Loc.T("OXYGEN DEPLETED") + "  " + Mathf.CeilToInt(Mathf.Max(0, _sabTimer)) + "s"; break;
+                    case SabKind.Lights: msg = Loc.T("LIGHTS SABOTAGED"); break;
+                    case SabKind.Comms: msg = Loc.T("COMMS SABOTAGED"); break;
                 }
             }
             _sabHint.text = msg;

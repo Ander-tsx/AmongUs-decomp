@@ -38,6 +38,7 @@ MonoBehaviour:
   - ReceivePowerMinigame
   - Asteroid1
   - o2_leaf1
+  - Lobby
   Prefabs:
   - {fileID: 1112405617775196286, guid: c03145cc2b6c244b585ac2dae23362da, type: 3}
   - {fileID: 2982026089785493945, guid: f04e105be396a4b2a8b986a1df803a75, type: 3}
@@ -64,3 +65,4 @@ MonoBehaviour:
   - {fileID: 6927233973486540302, guid: 4ac1fc92a6e8a4e7cb669c70e133736e, type: 3}
   - {fileID: 8337282790641031346, guid: 61d70848c37d24cb2b0001413ac1c061, type: 3}
   - {fileID: 6097150644601346287, guid: 66aeaf606310945e595e06e19c9b7912, type: 3}
+  - {fileID: 1073763452638886470, guid: d8eade6ac12114ebca7fae06cb7bfd7f, type: 3}

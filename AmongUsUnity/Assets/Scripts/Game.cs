@@ -25,6 +25,7 @@ namespace AmongUsLan
         public readonly List<GameTask> Tasks = new List<GameTask>();   // host: authoritative copy
         public int Vote = -2;           // -2 none, -1 skip, otherwise player id
         public bool UsedButton;
+        public int InVent = -1;
     }
 
     /// <summary>
@@ -79,7 +80,7 @@ namespace AmongUsLan
         float _botDirTimer;
         Vector2 _botDir;
         float _autoTimer;
-        bool _meetDone, _mgOpened, _sabMenuShown;
+        bool _meetDone, _mgOpened, _sabMenuShown, _ventDemo;
         string _shotPath;
         float _shotAt;
 
@@ -101,6 +102,8 @@ namespace AmongUsLan
             Application.runInBackground = true;
             Application.targetFrameRate = 60;
             WorldMap.Init();
+            InitVents();
+            BuildLobby();
             _cam = Camera.main;
             if (_cam == null)
             {
@@ -111,7 +114,7 @@ namespace AmongUsLan
             _cam.orthographicSize = 3f;
             _cam.backgroundColor = Color.black;
             _cam.clearFlags = CameraClearFlags.SolidColor;
-            _cam.transform.position = new Vector3(WorldMap.SpawnCenter.x, WorldMap.SpawnCenter.y, -10);
+            _cam.transform.position = new Vector3(LobbyOffset.x, LobbyOffset.y + 0.5f, -10);
             _audio = gameObject.AddComponent<AudioSource>();
             foreach (var c in Resources.LoadAll<AudioClip>("Audio")) _clips[c.name] = c;
             _white = Texture2D.whiteTexture;
@@ -119,6 +122,9 @@ namespace AmongUsLan
             Physics2D.queriesHitTriggers = false;
             _fog = FogOfWar.Create(_cam);
             BuildHud();
+            BuildVentHud();
+            BuildLobbyHud();
+            BuildMenuUi();
 
             var args = Environment.GetCommandLineArgs();
             _bot = args.Contains("-bot");
@@ -175,7 +181,7 @@ namespace AmongUsLan
             catch (Exception e) { _status = e.Message; return; }
             _isHost = false;
             _peer.Send(0, "HELLO|" + Clean(_nameField));
-            _status = "Conectando...";
+            _status = Loc.T("Connecting...");
             Debug.Log("[LAN] joining " + ip);
         }
 
@@ -208,7 +214,7 @@ namespace AmongUsLan
         PlayerInfo AddPlayer(int id, string name, int color)
         {
             var pi = new PlayerInfo { Id = id, Name = name, Color = color };
-            pi.Pos = pi.TargetPos = WorldMap.SpawnPos(id, 10);
+            pi.Pos = pi.TargetPos = LobbySpawn(id);
             _players[id] = pi;
             return pi;
         }
@@ -261,8 +267,8 @@ namespace AmongUsLan
                 case "CONNECT":
                     break;
                 case "HELLO":
-                    if (_phase != Phase.Lobby) { _peer.Send(from, "REFUSED|Partida en curso"); break; }
-                    if (_players.Count >= Palette.Colors.Length) { _peer.Send(from, "REFUSED|Sala llena"); break; }
+                    if (_phase != Phase.Lobby) { _peer.Send(from, "REFUSED|Game in progress"); break; }
+                    if (_players.Count >= Palette.Colors.Length) { _peer.Send(from, "REFUSED|Room full"); break; }
                     AddPlayer(from, Clean(a.Length > 1 ? a[1] : "Player"), FreeColor());
                     _peer.Send(from, "WELCOME|" + from);
                     BroadcastLobby();
@@ -289,6 +295,8 @@ namespace AmongUsLan
                 case "SABOTAGE": HostSabotage(from, a[1], a.Length > 2 ? a[2] : ""); break;
                 case "FIX": HostFix(from, a[1], int.Parse(a[2])); break;
                 case "HOLD": HostHold(from, int.Parse(a[1]), a[2] == "1"); break;
+                case "VENT": HostVent(from, a[1], int.Parse(a[2])); break;
+                case "COLOR": HostColor(from, int.Parse(a[1])); break;
             }
         }
 
@@ -436,7 +444,7 @@ namespace AmongUsLan
             switch (a[0])
             {
                 case "REFUSED":
-                    _status = a[1];
+                    _status = Loc.T(a[1]);
                     _peer?.Dispose(); _peer = null;
                     break;
                 case "WELCOME":
@@ -504,6 +512,7 @@ namespace AmongUsLan
                     if (Minigame.Instance != null) Minigame.Instance.Close(false);
                     foreach (var kv in _closedDoors) if (kv.Key != null) kv.Key.SetDoorway(true);
                     _closedDoors.Clear();
+                    LeaveAllVents();
                     SetPhase(Phase.Meeting);
                     ShowMeeting();
                     Play(_meetingBody >= 0 ? "Report_BodyFound" : "alarm_emergencymeeting");
@@ -519,10 +528,10 @@ namespace AmongUsLan
                         if (eject >= 0 && _players.TryGetValue(eject, out var e))
                         {
                             e.Alive = false;
-                            _resultText = e.Name + (wasImp ? " era un Impostor." : " no era un Impostor.");
+                            _resultText = e.Name + (wasImp ? Loc.T(" was an Impostor.") : Loc.T(" was not an Impostor."));
                         }
-                        else _resultText = "Nadie fue expulsado.";
-                        if (_impostorCount > 0) _resultText += "\n" + impLeft + (impLeft == 1 ? " Impostor queda." : " Impostores quedan.");
+                        else _resultText = Loc.T("No one was ejected.");
+                        if (_impostorCount > 0) _resultText += "\n" + impLeft + (impLeft == 1 ? Loc.T(" Impostor remains.") : Loc.T(" Impostors remain."));
                         _resultTimer = ResultSeconds;
                         _voteMap.Clear();
                         if (a.Length > 4)
@@ -552,8 +561,14 @@ namespace AmongUsLan
                     _endImpostors = a.Length > 2 ? a[2] : "";
                     HideMeeting();
                     ResetSabotage();
-                    _endText = _endWinner == 0 ? "¡Ganan los Tripulantes!" : "¡Ganan los Impostores!";
+                    _endText = _endWinner == 0 ? Loc.T("Crewmates Win") : Loc.T("Impostors Win");
                     SetPhase(Phase.Ended);
+                    break;
+                case "VENT":
+                    ApplyVent(a);
+                    break;
+                case "COUNT":
+                    Play("Panel_TempButton");
                     break;
                 case "SAB":
                 case "SABPROG":
@@ -565,6 +580,7 @@ namespace AmongUsLan
                     ResetSabotage();
                     HideMeeting();
                     ClearRound();
+                    ResetLobbyPositions();
                     SetPhase(Phase.Lobby);
                     break;
             }
@@ -689,6 +705,11 @@ namespace AmongUsLan
             UpdateFog();
             UpdateHud();
             UpdateSabotage();
+            UpdateLobbyHud();
+            UpdateLobbyAudio();
+            UpdateMenuUi();
+            UpdateVentHud();
+            UpdateVentInput();
             UpdateIntro();
             UpdateMeetingUi();
             FollowCamera();
@@ -756,7 +777,7 @@ namespace AmongUsLan
                     if (_isHost) HostHandle(kv.Key, kv.Value);
                     else if (kv.Value == "DISCONNECT")
                     {
-                        _status = "Se perdió la conexión con el anfitrión.";
+                        _status = Loc.T("Connection lost");
                         LeaveToMenu();
                         return;
                     }
@@ -809,7 +830,7 @@ namespace AmongUsLan
         void SyncAvatar(PlayerInfo p)
         {
             EnsureAvatar(p);
-            bool visible = _phase != Phase.Menu && (p.Alive || (_me != null && !_me.Alive));
+            bool visible = _phase != Phase.Menu && p.InVent < 0 && (p.Alive || (_me != null && !_me.Alive));
             if (_phase == Phase.Meeting || _phase == Phase.Result) visible = false;
             p.Renderer.enabled = visible;
             p.Visual.SetState(p.Moving && p.Alive || p.Moving, !p.Alive, p.Flip);
@@ -856,7 +877,7 @@ namespace AmongUsLan
             if (_me == null || _me.Body == null) return;
             Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             if (_bot) input = BotInput();
-            if (Minigame.Instance != null || IntroActive) input = Vector2.zero;
+            if (Minigame.Instance != null || IntroActive || _myVent != null) input = Vector2.zero;
             input = Vector2.ClampMagnitude(input, 1f);
             _me.Body.linearVelocity = input * MoveSpeed * (_me.Alive ? 1f : 1.2f);
             _me.Moving = input.sqrMagnitude > 0.01f;
@@ -944,7 +965,7 @@ namespace AmongUsLan
         {
             Vector3 target = (_me != null && _phase != Phase.Menu)
                 ? new Vector3(_me.Pos.x, _me.Pos.y, -10)
-                : new Vector3(WorldMap.SpawnCenter.x, WorldMap.SpawnCenter.y, -10);
+                : new Vector3(LobbyOffset.x, LobbyOffset.y + 0.5f, -10);
             _cam.transform.position = Vector3.Lerp(_cam.transform.position, target, 1f - Mathf.Exp(-10f * Time.deltaTime));
         }
 
@@ -1006,6 +1027,14 @@ namespace AmongUsLan
             if (_phase == Phase.Menu && _autoJoin && _peer == null && _autoTimer > 2f) { _autoTimer = 1f; JoinGame(_ipField); }
             if (_isHost && _autoHost && _phase == Phase.Lobby && Environment.GetCommandLineArgs().Contains("-solo") && _autoTimer > 2f) HostStartGame();
             if (_isHost && _autoHost && _phase == Phase.Lobby && _players.Count >= (Environment.GetCommandLineArgs().Contains("-four") ? 4 : 2) && _autoTimer > 8f) HostStartGame();
+            if (_phase == Phase.Playing && _autoTimer > 7f && !_ventDemo && Environment.GetCommandLineArgs().Contains("-ventdemo") && _me != null)
+            {
+                _ventDemo = true;
+                var cv = _vents.Values.OrderBy(v => Vector2.Distance(v.transform.position, _me.Pos)).First();
+                _me.Body.position = (Vector2)cv.transform.position + new Vector2(0.3f, 0f);
+                _me.Pos = _me.TargetPos = _me.Body.position;
+                Cmd("VENT|enter|" + cv.Id);
+            }
             if (_phase == Phase.Playing && _autoTimer > 7f && !_sabMenuShown && Environment.GetCommandLineArgs().Contains("-sabmenu")) { _sabMenuShown = true; _sabCooldown = 0; ToggleSabMenu(); }
             if (_phase == Phase.Playing && _autoTimer > 3f && !_mgOpened)
             {
@@ -1053,8 +1082,6 @@ namespace AmongUsLan
 
             switch (_phase)
             {
-                case Phase.Menu: DrawMenu(W, H); break;
-                case Phase.Lobby: DrawLobby(W, H); break;
                 case Phase.Ended: DrawEnd(W, H); break;
             }
         }
@@ -1233,10 +1260,10 @@ namespace AmongUsLan
             GUI.color = _endWinner == 1 ? new Color(1f, 0.3f, 0.3f) : new Color(0.5f, 0.9f, 1f);
             GUI.Label(new Rect(0, H / 2 - 120, W, 60), _endText, _big);
             GUI.color = prev;
-            GUI.Label(new Rect(0, H / 2 - 40, W, 40), "Impostores: " + _endImpostors, _center);
-            if (_isHost && GUI.Button(new Rect(W / 2 - 130, H / 2 + 40, 260, 50), "Volver a la sala", _mid))
+            GUI.Label(new Rect(0, H / 2 - 40, W, 40), Loc.T("Impostors: ") + _endImpostors, _center);
+            if (_isHost && GUI.Button(new Rect(W / 2 - 130, H / 2 + 40, 260, 50), Loc.T("Back to Lobby"), _mid))
                 Emit("LOBBYBACK");
-            else if (!_isHost) GUI.Label(new Rect(0, H / 2 + 40, W, 40), "Esperando al anfitrión...", _center);
+            else if (!_isHost) GUI.Label(new Rect(0, H / 2 + 40, W, 40), Loc.T("Waiting for the host..."), _center);
         }
     }
 }

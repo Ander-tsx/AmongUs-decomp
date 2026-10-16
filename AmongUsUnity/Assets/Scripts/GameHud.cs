@@ -33,7 +33,7 @@ namespace AmongUsLan
             // progress bar + task list (top-left)
             var bg = _ui.Rect(_hud, new Vector2(-w + 2.15f, h - 0.35f), new Vector2(3.9f, 0.42f), new Color(0.05f, 0.1f, 0.12f, 0.9f), 1);
             _barFill = _ui.Rect(_hud, new Vector2(-w + 0.25f, h - 0.35f), new Vector2(0.01f, 0.32f), new Color(0.2f, 0.85f, 0.35f), 2);
-            _ui.Text("TOTAL TASKS COMPLETED", _hud, new Vector2(-w + 0.35f, h - 0.35f), 0.2f, Color.white, TextAnchor.MiddleLeft, 3, true);
+            _ui.Text(Loc.T("TOTAL TASKS COMPLETED"), _hud, new Vector2(-w + 0.35f, h - 0.35f), 0.2f, Color.white, TextAnchor.MiddleLeft, 3, true);
             _ui.Rect(_hud, new Vector2(-w + 1.9f, h - 1.9f), new Vector2(3.4f, 2.4f), new Color(0, 0, 0, 0.35f), 0);
             _taskText = _ui.Text("", _hud, new Vector2(-w + 0.3f, h - 0.85f), 0.2f, Color.white, TextAnchor.UpperLeft, 3);
             _roleText = _ui.Text("", _hud, new Vector2(0, h - 0.45f), 0.3f, Color.white, TextAnchor.MiddleCenter, 3, true);
@@ -56,7 +56,7 @@ namespace AmongUsLan
 
         void TryKill()
         {
-            if (_phase != Phase.Playing || _me == null || !_me.Impostor || !_me.Alive || _killCd > 0f) return;
+            if (_phase != Phase.Playing || _me == null || !_me.Impostor || !_me.Alive || _killCd > 0f || _myVent != null) return;
             var target = NearestPlayer(KillRange, p => p.Alive && !p.Impostor && p != _me);
             if (target != null) { Cmd("KILL|" + target.Id); _killCd = KillCooldown; }
         }
@@ -101,16 +101,16 @@ namespace AmongUsLan
                 var lines = _myTasks.Select(t =>
                 {
                     string c = t.Complete ? "<color=#4cff6a>" : "<color=#ffffff>";
-                    return t.Title + " (" + t.RoomName(t.Current.Room) + ")" + (t.Steps.Length > 1 ? " " + t.Done + "/" + t.Steps.Length : "");
+                    return Loc.T(t.Title) + " (" + Loc.T(t.RoomName(t.Current.Room)) + ")" + (t.Steps.Length > 1 ? " " + t.Done + "/" + t.Steps.Length : "");
                 });
                 _taskText.text = string.Join("\n", lines);
-                _roleText.text = _me.Alive ? "" : "YOU ARE DEAD";
+                _roleText.text = _me.Alive ? "" : Loc.T("YOU ARE DEAD");
             }
             else
             {
                 string partners = string.Join(", ", _players.Values.Where(p => p.Impostor && p != _me).Select(p => p.Name));
-                _taskText.text = "Fake Tasks:\n" + string.Join("\n", ShipFakeTasks());
-                _roleText.text = (partners.Length > 0 ? "Impostors: " + partners : "");
+                _taskText.text = Loc.T("Fake Tasks:") + "\n" + string.Join("\n", ShipFakeTasks());
+                _roleText.text = (partners.Length > 0 ? Loc.T("Impostors: ") + partners : "");
             }
 
             // use progress
@@ -123,7 +123,7 @@ namespace AmongUsLan
                 float f = Mathf.Clamp01(_taskHold / TaskHoldSeconds);
                 _useBarFill.transform.localScale = new Vector3(Mathf.Max(0.01f, 2.5f * f), 0.22f, 1);
                 _useBarFill.transform.localPosition = new Vector2(-1.25f + 2.5f * f / 2f, -h + 0.5f);
-                _useProgressText.text = _myTasks[_taskRunning].Title;
+                _useProgressText.text = Loc.T(_myTasks[_taskRunning].Title);
             }
         }
 
