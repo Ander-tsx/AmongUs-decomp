@@ -31,10 +31,11 @@ namespace AmongUsLan
         {
             var t = _myTasks[idx];
             string prefab;
-            if (t.Type == TaskTypes.DivertPower) prefab = t.Done == 0 ? "DivertPowerGame" : "DivertMinigame";
+            if (t.Type == TaskTypes.DivertPower) prefab = t.Done == 0 ? "DivertMinigame" : "ReceivePowerMinigame";
             else if (!MinigameFor.TryGetValue(t.Type, out prefab)) return false;
             var step = t.Current;
-            var mg = Minigame.Open(prefab, ok => { if (ok) Cmd("TASK|" + idx); }, t.Done, step.Room, step.Console, _bot);
+            var target = t.Type == TaskTypes.DivertPower && t.Steps.Length > 1 ? t.Steps[1].Room : SystemTypes.Hallway;
+            var mg = Minigame.Open(prefab, ok => { if (ok) Cmd("TASK|" + idx); }, t.Done, step.Room, step.Console, _bot, target);
             if (mg == null) return false;
             if (_me != null && _me.Body != null) _me.Body.linearVelocity = Vector2.zero;
             return true;

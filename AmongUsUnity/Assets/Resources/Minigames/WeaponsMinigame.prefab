@@ -579,6 +579,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8519424409034930730}
+  - component: {fileID: 8753157250512023186}
   m_Layer: 5
   m_Name: WeaponsMinigame
   m_TagString: Untagged
@@ -607,6 +608,41 @@ Transform:
   - {fileID: 9202121403416717752}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &8753157250512023186
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7308355614098146802}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ad1d83d3c39e02fbb646a8b5143e23c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  TransType: 0
+  TargetPosition: {x: 0, y: 0}
+  OpenSound: {fileID: 8300000, guid: bc426d93e63d2d24e84e47a87248b86b, type: 3}
+  CloseSound: {fileID: 8300000, guid: 79598ec7d3e02f647b99a9bcd4b24a9a, type: 3}
+  Step: 0
+  Room: 0
+  ConsoleName: 
+  Bot: 0
+  Target: 0
+  XSpan:
+    min: -2.5
+    max: 2.5
+  YSpan:
+    min: -2.25
+    max: 2.25
+  TimeToSpawn:
+    min: 0.3
+    max: 0.8
+  ShootSound: {fileID: 8300000, guid: 62904106bd0b9034d85531a4659de004, type: 3}
+  ExplodeSounds:
+  - {fileID: 8300000, guid: bdfbd412a982da049ad3fa6ef1589043, type: 3}
+  - {fileID: 8300000, guid: 2556cadcff6f7e04480b03d022e78175, type: 3}
+  - {fileID: 8300000, guid: 3a2c9ad1440ef9e4a891245050c9936c, type: 3}
 --- !u!1 &7596489686652696860
 GameObject:
   m_ObjectHideFlags: 0

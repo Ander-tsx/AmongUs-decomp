@@ -634,6 +634,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8619538361575106978}
+  - component: {fileID: 7850765375658168314}
   m_Layer: 5
   m_Name: CourseMinigame
   m_TagString: Untagged
@@ -662,6 +663,36 @@ Transform:
   - {fileID: 1072184557196567745}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &7850765375658168314
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5476985840367521704}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78dd3d39d6a2c368af7147c22c772ebb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  TransType: 0
+  TargetPosition: {x: 0, y: 0}
+  OpenSound: {fileID: 8300000, guid: bc426d93e63d2d24e84e47a87248b86b, type: 3}
+  CloseSound: {fileID: 8300000, guid: 79598ec7d3e02f647b99a9bcd4b24a9a, type: 3}
+  Step: 0
+  Room: 0
+  ConsoleName: 
+  Bot: 0
+  Target: 0
+  Ship: {fileID: 589879978396753071}
+  Destination: {fileID: 0}
+  NumPoints: 5
+  XRange:
+    min: -1.75
+    max: 1.75
+  YRange:
+    min: -0.9
+    max: 0.9
 --- !u!1 &7213299787971445972
 GameObject:
   m_ObjectHideFlags: 0

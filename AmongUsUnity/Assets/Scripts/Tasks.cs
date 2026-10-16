@@ -17,6 +17,7 @@ namespace AmongUsLan
         public TaskTypes Type;
         public TaskStep[] Steps;
         public int Done;
+        public float NotBefore;         // local only: step not usable until this time (Inspect Sample wait)
 
         public bool Complete => Done >= Steps.Length;
         public TaskStep Current => Steps[Math.Min(Done, Steps.Length - 1)];

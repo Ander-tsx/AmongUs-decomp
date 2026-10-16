@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7464467440018499644}
+  - component: {fileID: 548109387486217414}
   m_Layer: 5
   m_Name: EmptyGarbageMinigame
   m_TagString: Untagged
@@ -32,6 +33,34 @@ Transform:
   - {fileID: 6524288152276052644}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &548109387486217414
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1852810480447426238}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d86acc5fffaa6ebda172e1e451c751ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  TransType: 0
+  TargetPosition: {x: 0, y: 0}
+  OpenSound: {fileID: 8300000, guid: bc426d93e63d2d24e84e47a87248b86b, type: 3}
+  CloseSound: {fileID: 8300000, guid: 79598ec7d3e02f647b99a9bcd4b24a9a, type: 3}
+  Step: 0
+  Room: 0
+  ConsoleName: 
+  Bot: 0
+  Target: 0
+  HandleRange:
+    min: -0.65
+    max: 0.65
+  LeverDown: {fileID: 8300000, guid: 51e9e6faa07800a478e0bf55c0efcdc9, type: 3}
+  LeverUp: {fileID: 8300000, guid: ec2869c72b4446e4bace5cedf6091d87, type: 3}
+  GrinderStart: {fileID: 8300000, guid: 914eef32836172d47b2798dbb25eb964, type: 3}
+  GrinderLoop: {fileID: 8300000, guid: 6d2790569c590434ea560b7889c14afa, type: 3}
 --- !u!1 &2761286287701947814
 GameObject:
   m_ObjectHideFlags: 0

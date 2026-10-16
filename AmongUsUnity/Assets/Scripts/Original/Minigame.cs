@@ -22,12 +22,13 @@ public abstract class Minigame : MonoBehaviour
     public SystemTypes Room;            // console room (distinguishes e.g. upper/lower engine)
     public string ConsoleName;
     public bool Bot;                    // automated solving for smoke tests
+    public SystemTypes Target;          // e.g. destination room of a Divert Power task
 
     bool _closing;
     float _openedAt;
     static AudioSource _sfx;
 
-    public static Minigame Open(string prefabName, Action<bool> finished, int step, SystemTypes room, string consoleName, bool bot)
+    public static Minigame Open(string prefabName, Action<bool> finished, int step, SystemTypes room, string consoleName, bool bot, SystemTypes target = SystemTypes.Hallway)
     {
         if (Instance != null) return null;
         var prefab = PrefabCatalog.Get(prefabName);
@@ -46,7 +47,7 @@ public abstract class Minigame : MonoBehaviour
         foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.sortingOrder += 100;
         var mg = go.GetComponent<Minigame>();
         if (mg == null) { UnityEngine.Object.Destroy(go); return null; }
-        mg.Finished = finished; mg.Step = step; mg.Room = room; mg.ConsoleName = consoleName; mg.Bot = bot;
+        mg.Target = target; mg.Finished = finished; mg.Step = step; mg.Room = room; mg.ConsoleName = consoleName; mg.Bot = bot;
         Instance = mg;
         UiKit.Blocked = true;
         mg._openedAt = Time.time;

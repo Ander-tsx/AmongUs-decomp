@@ -243,6 +243,7 @@ MonoBehaviour:
   Room: 0
   ConsoleName: 
   Bot: 0
+  Target: 0
   AcceptedTime:
     min: 0.33
     max: 0.6

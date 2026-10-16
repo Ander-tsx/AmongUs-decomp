@@ -457,7 +457,12 @@ namespace AmongUsLan
                 case "TASKOK":
                     {
                         int idx = int.Parse(a[1]);
-                        if (idx >= 0 && idx < _myTasks.Count) _myTasks[idx].Done++;
+                        if (idx >= 0 && idx < _myTasks.Count)
+                        {
+                            var tk = _myTasks[idx];
+                            tk.Done++;
+                            if (tk.Type == TaskTypes.InspectSample && tk.Done == 1) tk.NotBefore = Time.time + (_bot ? 2f : 60f);
+                        }
                         Play("Panel_TempButton");
                         break;
                     }
@@ -810,7 +815,7 @@ namespace AmongUsLan
             for (int i = 0; i < _myTasks.Count; i++)
             {
                 var t = _myTasks[i];
-                if (t.Complete) continue;
+                if (t.Complete || Time.time < t.NotBefore) continue;
                 var c = WorldMap.FindConsole(t.Current.Console, t.Current.Room);
                 if (c == null) continue;
                 float d = Vector2.Distance(c.transform.position, _me.Pos);

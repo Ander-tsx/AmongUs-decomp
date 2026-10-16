@@ -932,6 +932,7 @@ MonoBehaviour:
   Room: 0
   ConsoleName: 
   Bot: 0
+  Target: 0
   YRange:
     min: -2.13
     max: 2.13

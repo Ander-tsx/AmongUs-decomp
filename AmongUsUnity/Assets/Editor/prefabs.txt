@@ -20,3 +20,6 @@ KeyPadDisarmMinigame
 ResetReactorMinigame
 SwitchMinigame
 RadioMinigame
+ReceivePowerMinigame
+Asteroid1
+o2_leaf1

@@ -35,6 +35,9 @@ MonoBehaviour:
   - ResetReactorMinigame
   - SwitchMinigame
   - RadioMinigame
+  - ReceivePowerMinigame
+  - Asteroid1
+  - o2_leaf1
   Prefabs:
   - {fileID: 1112405617775196286, guid: c03145cc2b6c244b585ac2dae23362da, type: 3}
   - {fileID: 2982026089785493945, guid: f04e105be396a4b2a8b986a1df803a75, type: 3}
@@ -58,3 +61,6 @@ MonoBehaviour:
   - {fileID: 4884725996562769410, guid: 49862d9cd22f84bd6ba5ccc15818e0cc, type: 3}
   - {fileID: 8787090969880130281, guid: 5d834f7f05f2645778ef233a894bd6fc, type: 3}
   - {fileID: 3667271893570106054, guid: 4e5fb0823730e40f180ea192b0956008, type: 3}
+  - {fileID: 6927233973486540302, guid: 4ac1fc92a6e8a4e7cb669c70e133736e, type: 3}
+  - {fileID: 8337282790641031346, guid: 61d70848c37d24cb2b0001413ac1c061, type: 3}
+  - {fileID: 6097150644601346287, guid: 66aeaf606310945e595e06e19c9b7912, type: 3}
