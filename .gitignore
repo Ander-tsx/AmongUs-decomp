@@ -135,3 +135,6 @@ __pycache__/
 /AmongUsUnity/Assets/Resources/Audio.meta
 /AmongUsUnity/Assets/Original/
 /AmongUsUnity/Assets/Original.meta
+
+.DS_Store
+**/.DS_Store
