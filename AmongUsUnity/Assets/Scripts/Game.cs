@@ -173,6 +173,7 @@ namespace AmongUsLan
             catch (Exception e) { _status = "No se pudo crear partida: " + e.Message; return; }
             _isHost = true;
             _myId = 0;
+            _discovery.ResumeAdvertising();
             _discovery.StartAdvertising(_nameField);
             _me = AddPlayer(0, _nameField, 0);
             SetPhase(Phase.Lobby);
@@ -283,7 +284,12 @@ namespace AmongUsLan
                     if (_players.Remove(from))
                     {
                         if (_phase == Phase.Lobby) BroadcastLobby();
-                        else { Emit("LEAVE|" + from); HostCheckWin(); }
+                        else
+                        {
+                            Emit("LEAVE|" + from);
+                            if (_phase == Phase.Meeting && _players.Values.Where(x => x.Alive).All(x => x.Vote != -2)) HostTally();
+                            HostCheckWin();
+                        }
                     }
                     break;
                 case "POS":
@@ -477,6 +483,7 @@ namespace AmongUsLan
                         {
                             v.Alive = false;
                             SpawnBody(id, new Vector2(F(a[2]), F(a[3])));
+                            if (v == _me) Fx("", new Color(0.8f, 0f, 0f, 0.7f), 0.7f, Color.white);
                         }
                         Play("impostor_kill");
                         break;
@@ -524,6 +531,7 @@ namespace AmongUsLan
                     LeaveAllVents();
                     SetPhase(Phase.Meeting);
                     ShowMeeting();
+                    Fx(Loc.T(_meetingBody >= 0 ? "DEAD BODY REPORTED" : "EMERGENCY MEETING"), new Color(0.05f, 0f, 0f, 0.92f), 1.8f, _meetingBody >= 0 ? new Color(1f, 0.25f, 0.2f) : new Color(1f, 0.85f, 0.2f));
                     Play(_meetingBody >= 0 ? "Report_BodyFound" : "alarm_emergencymeeting");
                     break;
                 case "VOTED":
@@ -724,6 +732,7 @@ namespace AmongUsLan
             UpdateFog();
             UpdateHud();
             UpdateSabotage();
+            UpdateFx();
             UpdateChat();
             UpdateEnd();
             UpdateAmbience();
@@ -817,6 +826,7 @@ namespace AmongUsLan
             _players.Clear();
             ClearRound();
             _me = null; _myId = -1; _isHost = false;
+            _discovery.StopAdvertising();
             SetPhase(Phase.Menu);
         }
 

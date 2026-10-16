@@ -175,6 +175,7 @@ namespace AmongUsLan
         public void StartAdvertising(string hostName)
         {
             _hostName = hostName;
+            if (_send != null) return;      // already broadcasting; just the name changed
             _send = new UdpClient { EnableBroadcast = true };
             new Thread(() =>
             {
@@ -182,13 +183,16 @@ namespace AmongUsLan
                 while (_running)
                 {
                     var bytes = Encoding.UTF8.GetBytes(Magic + "|" + _hostName + "|" + _hostPlayers);
-                    foreach (var t in targets) { try { _send.Send(bytes, bytes.Length, t); } catch { } }
+                    if (_advertise) foreach (var t in targets) { try { _send.Send(bytes, bytes.Length, t); } catch { } }
                     Thread.Sleep(1000);
                 }
             }) { IsBackground = true }.Start();
         }
 
+        volatile bool _advertise = true;
         public void SetPlayers(int n) { _hostPlayers = n; }
+        public void StopAdvertising() { _advertise = false; }
+        public void ResumeAdvertising() { _advertise = true; }
 
         public List<Entry> Snapshot()
         {

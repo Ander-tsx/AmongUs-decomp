@@ -173,6 +173,7 @@ namespace AmongUsLan
             }
             _ejectText = _ui.Text("", _eject, new Vector2(0, -1.6f), 0.4f, Color.white, TextAnchor.MiddleCenter, 8, true);
             _ejectFull = _resultText.Replace("\n", " ");
+            if (_shotPath != null && System.Environment.GetCommandLineArgs().Contains("-shotOnEject")) _shotAt = Time.timeSinceLevelLoad + 3.2f;
         }
 
         void UpdateMeetingUi()

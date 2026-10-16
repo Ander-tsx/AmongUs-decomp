@@ -36,6 +36,7 @@ namespace AmongUsLan
             { "Common tasks", "Tareas comunes" }, { "Short tasks", "Tareas cortas" }, { "Long tasks", "Tareas largas" }, { "Emergency meetings", "Reuniones de emergencia" },
             { "Voting time", "Tiempo de votación" }, { "Anonymous votes", "Votos anónimos" }, { "On", "Sí" }, { "Off", "No" }, { "Game Settings", "Ajustes de partida" },
             { "TITLE", "HAY UN IMPOSTOR ENTRE NOSOTROS" }, { "Room code", "Código de sala" }, { "Code", "Código" }, { "Join with code", "Unirse con código" },
+            { "DEAD BODY REPORTED", "¡CUERPO REPORTADO!" }, { "EMERGENCY MEETING", "REUNIÓN DE EMERGENCIA" },
             { "VICTORY", "VICTORIA" }, { "DEFEAT", "DERROTA" },
             // tasks
             { "Swipe Card", "Deslizar tarjeta" }, { "Fix Wiring", "Arreglar cableado" }, { "Empty Garbage", "Vaciar basura" }, { "Calibrate Distributor", "Calibrar distribuidor" },

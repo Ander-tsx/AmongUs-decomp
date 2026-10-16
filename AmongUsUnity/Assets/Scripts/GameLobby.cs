@@ -140,6 +140,7 @@ namespace AmongUsLan
             }
             string ip = _isHost ? Loc.T("Room code") + ": " + RoomCode.Encode(LocalAddress()) : Loc.T("Waiting for the host");
             _lobbyInfo.text = ip + "   -   " + _players.Count + "/" + Palette.Colors.Length + " " + Loc.T("players");
+            if (Input.GetKeyDown(KeyCode.Escape) && _wardrobe == null && _settingsUi == null && !_chatOpen) { LeaveToMenu(); return; }
             if (Input.GetKeyDown(KeyCode.E) && NearWardrobe) ToggleWardrobe();
             else if (Input.GetKeyDown(KeyCode.E) && NearSettingsPanel) ToggleSettings();
             if (_isHost && _startCountdown >= 0f)
