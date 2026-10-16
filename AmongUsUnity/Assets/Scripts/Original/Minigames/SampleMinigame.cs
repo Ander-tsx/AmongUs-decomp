@@ -61,4 +61,12 @@ public class SampleMinigame : Minigame
         yield return new WaitForSeconds(0.3f);
         _selected = _odd; Confirm();
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        if (Step >= 1) yield return StartCoroutine(TClick(Center(_buttons[_odd])));
+        yield return StartCoroutine(TClick(Center(_confirm)));
+    }
 }

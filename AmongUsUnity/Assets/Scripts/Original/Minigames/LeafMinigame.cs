@@ -27,7 +27,7 @@ public class LeafMinigame : Minigame
             var lb = go.GetComponent<LeafBehaviour>();
             var sr = go.GetComponent<SpriteRenderer>();
             if (lb != null && lb.Images != null && lb.Images.Length > 0) sr.sprite = lb.Images[Random.Range(0, lb.Images.Length)];
-            var rb = go.GetComponent<Rigidbody2D>(); if (rb != null) { rb.bodyType = RigidbodyType2D.Kinematic; rb.simulated = false; }
+            var rb = go.GetComponent<Rigidbody2D>(); if (rb != null) Destroy(rb);
             go.transform.localPosition = new Vector3(Random.Range(MinX + 0.2f, MaxX - 0.2f), Random.Range(MinY + 0.2f, MaxY - 0.2f), -4f - i * 0.01f);
             go.transform.localRotation = Quaternion.Euler(0, 0, Random.Range(0, 360f));
             _leaves.Add(new Leaf { T = go.transform, Spin = Random.Range(-45f, 45f) });
@@ -41,7 +41,7 @@ public class LeafMinigame : Minigame
         if (_done || Bot) return;
         var m = Mouse;
         if (MouseDown && _held == null)
-            foreach (var c in Physics2D.OverlapPointAll(m, 1 << AmongUsLan.UiKit.Layer))
+            foreach (var c in AmongUsLan.UiKit.PointAll(m))
             {
                 var l = _leaves.Find(x => !x.Gone && x.T == c.transform);
                 if (l != null) { _held = l; _grab = (Vector2)l.T.position - m; Sfx(LeaveSounds); break; }
@@ -82,5 +82,19 @@ public class LeafMinigame : Minigame
     {
         yield return new WaitForSeconds(0.3f);
         foreach (var l in _leaves) { yield return new WaitForSeconds(0.05f); Suck(l); }
+    }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        float until = Time.time + 50f;
+        while (!_done && Time.time < until)
+        {
+            var l = _leaves.Find(x => !x.Gone && x.T != null);
+            if (l == null) { yield return null; continue; }
+            var to = (Vector2)transform.TransformPoint(new Vector3(SuckX - 0.4f, l.T.localPosition.y, 0));
+            yield return StartCoroutine(TDrag(5f, Center(l.T), to));
+        }
     }
 }

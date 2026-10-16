@@ -25,4 +25,11 @@ public class ReactorMinigame : Minigame
         _text.text = held ? "Holding..." : "Hold to stabilize the reactor";
         if (held) { _sweep += Time.deltaTime; if (_sweeper != null) _sweeper.localPosition = new Vector3(0, -2.15f + Mathf.PingPong(_sweep * 3f, 4.3f), _sweeper.localPosition.z); }
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        yield return StartCoroutine(THold((Vector2)_hand.bounds.center, 1.0f));
+    }
 }

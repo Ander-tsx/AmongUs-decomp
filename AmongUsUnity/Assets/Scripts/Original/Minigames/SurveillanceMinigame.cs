@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -77,4 +78,7 @@ public class SurveillanceMinigame : Minigame
         foreach (var r in _rts) if (r != null) r.Release();
         _cams.Clear(); _rts.Clear();
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay() { yield return new WaitForSeconds(0.5f); TestPassed = true; }
 }

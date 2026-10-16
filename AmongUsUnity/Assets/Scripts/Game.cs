@@ -719,6 +719,7 @@ namespace AmongUsLan
         {
             PumpNetwork();
             RunAutomation();
+            if (Environment.GetCommandLineArgs().Contains("-uitest")) RunUiTest();
 
             foreach (var p in _players.Values) SyncAvatar(p);
 

@@ -55,4 +55,11 @@ public class SwitchMinigame : Minigame
     }
 
     IEnumerator BotSolve() { for (int i = 0; i < 5; i++) if (!_on[i]) { yield return new WaitForSeconds(0.08f); Flip(i); } }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        for (int i = 0; i < 5; i++) if (!_on[i]) yield return StartCoroutine(TClick(Center(_switches[i].transform)));
+    }
 }

@@ -80,4 +80,14 @@ public class TuneRadioMinigame : Minigame
         yield return new WaitForSeconds(0.3f);
         while (Mathf.Abs(_angle - _target) > 1f) { _angle = Mathf.MoveTowards(_angle, _target, Time.deltaTime * 200f); Rotate(); yield return null; }
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        var c = (Vector2)_dial.position;
+        float a = _target * Mathf.Deg2Rad;
+        yield return StartCoroutine(TDrag(2.5f, c + new Vector2(0, 0.4f), c + new Vector2(Mathf.Sin(a), Mathf.Cos(a)) * 0.6f));
+        yield return StartCoroutine(THold(c + new Vector2(Mathf.Sin(a), Mathf.Cos(a)) * 0.6f, 1.5f));
+    }
 }

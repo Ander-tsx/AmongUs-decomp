@@ -44,6 +44,16 @@ namespace AmongUsLan
             return k;
         }
 
+        /// <summary>UI colliders from the original prefabs are triggers; the world queries ignore triggers, so UI hit tests opt in.</summary>
+        public static Collider2D[] PointAll(Vector2 p)
+        {
+            bool old = Physics2D.queriesHitTriggers;
+            Physics2D.queriesHitTriggers = true;
+            var r = Physics2D.OverlapPointAll(p, 1 << Layer);
+            Physics2D.queriesHitTriggers = old;
+            return r;
+        }
+
         static void SetLayer(GameObject g) { g.layer = Layer; }
 
         public Transform Group(string name, Transform parent = null)
@@ -168,7 +178,9 @@ namespace AmongUsLan
         {
             if (Blocked) { if (_hover != null) { _hover.SetHover(false); _hover = null; } return; }
             var wp = (Vector2)Cam.ScreenToWorldPoint(Input.mousePosition);
-            var hit = Physics2D.OverlapPoint(wp, 1 << Layer);
+            var all = PointAll(wp);
+            Collider2D hit = null; float hz = float.MaxValue;
+            foreach (var c in all) { if (c.GetComponent<UiButton>() == null) continue; float z = c.transform.position.z; if (z < hz) { hz = z; hit = c; } }
             var btn = hit != null ? hit.GetComponent<UiButton>() : null;
             if (btn != null && (!btn.gameObject.activeInHierarchy || !btn.Interactable)) btn = null;
             if (btn != _hover)

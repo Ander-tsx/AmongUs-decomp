@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using AmongUsLan;
@@ -62,16 +63,20 @@ public abstract class Minigame : MonoBehaviour
 
     // ---- helpers ----
     protected Camera Cam => UiKit.I.Cam;
-    protected Vector2 Mouse => (Vector2)Cam.ScreenToWorldPoint(Input.mousePosition);
-    protected bool MouseDown => Input.GetMouseButtonDown(0);
-    protected bool MouseHeld => Input.GetMouseButton(0);
-    protected bool MouseUp => Input.GetMouseButtonUp(0);
+    /// <summary>Scripted pointer for automated UI tests (-uitest); null = real mouse.</summary>
+    public static Vector2? FakePos;
+    public static bool FakeDown, FakeHeld, FakeUp;
+
+    protected Vector2 Mouse => FakePos ?? (Vector2)Cam.ScreenToWorldPoint(Input.mousePosition);
+    protected bool MouseDown => FakePos.HasValue ? FakeDown : Input.GetMouseButtonDown(0);
+    protected bool MouseHeld => FakePos.HasValue ? FakeHeld : Input.GetMouseButton(0);
+    protected bool MouseUp => FakePos.HasValue ? FakeUp : Input.GetMouseButtonUp(0);
 
     /// <summary>Topmost (closest to camera) collider under the pointer, ignoring the close/background areas.</summary>
     protected Collider2D HitAt(Vector2 p)
     {
         Collider2D best = null; float bz = float.MaxValue;
-        foreach (var c in Physics2D.OverlapPointAll(p, 1 << UiKit.Layer))
+        foreach (var c in UiKit.PointAll(p))
         {
             if (!c.transform.IsChildOf(transform)) continue;
             if (c.name.Contains("CloseButton")) continue;
@@ -80,6 +85,41 @@ public abstract class Minigame : MonoBehaviour
         }
         return best;
     }
+
+    // ---- scripted pointer for automated tests ----
+    public virtual IEnumerator TestPlay() { yield break; }
+    public virtual bool HasTest => false;
+    public bool TestPassed;
+
+    protected IEnumerator TClick(Vector2 p)
+    {
+        FakePos = p; FakeDown = true; FakeHeld = true; yield return null;
+        FakeDown = false; yield return null;
+        FakeHeld = false; FakeUp = true; yield return null; FakeUp = false;
+    }
+
+    /// <summary>Press at the first point, move along the path at a constant speed (units/s) and release.</summary>
+    protected IEnumerator TDrag(float speed, params Vector2[] path)
+    {
+        FakePos = path[0]; FakeDown = true; FakeHeld = true; yield return null; FakeDown = false;
+        for (int i = 1; i < path.Length; i++)
+        {
+            float len = Vector2.Distance(path[i - 1], path[i]), t = 0f, dur = Mathf.Max(0.02f, len / speed);
+            while (t < dur) { t += Time.deltaTime; FakePos = Vector2.Lerp(path[i - 1], path[i], Mathf.Clamp01(t / dur)); yield return null; }
+            FakePos = path[i];
+        }
+        yield return null;
+        FakeHeld = false; FakeUp = true; yield return null; FakeUp = false;
+    }
+
+    protected IEnumerator THold(Vector2 p, float seconds)
+    {
+        FakePos = p; FakeDown = true; FakeHeld = true; yield return null; FakeDown = false;
+        yield return new WaitForSeconds(seconds);
+        FakeHeld = false; FakeUp = true; yield return null; FakeUp = false;
+    }
+
+    protected static Vector2 Center(Component c) { var col = c.GetComponent<Collider2D>(); return col != null ? (Vector2)col.bounds.center : (Vector2)c.transform.position; }
 
     protected Transform Find(string path)
     {
@@ -134,8 +174,8 @@ public abstract class Minigame : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape)) { Close(false); return; }
         if (MouseDown && Time.time - _openedAt > 0.15f)
         {
-            foreach (var c in Physics2D.OverlapPointAll(Mouse, 1 << UiKit.Layer))
-                if (c.transform.IsChildOf(transform) && c.name.Contains("CloseButton")) { Close(false); return; }
+            foreach (var c in UiKit.PointAll(Mouse))
+                if (c.transform.IsChildOf(transform) && c.name == "CloseButton") { Close(false); return; }
         }
         Tick();
     }

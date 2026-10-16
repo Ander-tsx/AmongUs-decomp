@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>Submit Scan: stay at the scanner until the progress bar fills.</summary>
@@ -28,4 +29,7 @@ public class MedScanMinigame : Minigame
         gauge.Set(ScanTimer / ScanDuration);
         if (ScanTimer >= ScanDuration) { _done = true; _text.text = "Scan Complete"; Sfx(TextSound); Win(1f); }
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay() { yield return new WaitForSeconds(ScanDuration + 1f); }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>One refuelling panel: hold the button until the tank is full.</summary>
@@ -34,7 +35,7 @@ public class RefuelStage : MonoBehaviour
     public void Tick(MultistageMinigame host)
     {
         if (_done) return;
-        bool holding = host.Bot || (Input.GetMouseButton(0) && _button != null && IsOver());
+        bool holding = host.Bot || (host.PointerHeld && _button != null && _button.OverlapPoint(host.PointerPos));
         Lights(holding);
         if (holding)
         {
@@ -50,5 +51,13 @@ public class RefuelStage : MonoBehaviour
         var cam = AmongUsLan.UiKit.I.Cam;
         var p = (Vector2)cam.ScreenToWorldPoint(Input.mousePosition);
         return _button.OverlapPoint(p);
+    }
+
+    public IEnumerator TestHold(MultistageMinigame host)
+    {
+        yield return new WaitForSeconds(0.3f);
+        var p = (Vector2)_button.bounds.center;
+        host.TestHoldAt(p, RefuelDuration + 0.8f);
+        yield return new WaitForSeconds(RefuelDuration + 1.2f);
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using PowerTools;
+using System.Linq;
 
 /// <summary>Download / Upload Data: press the button and wait while the courier carries the file across.</summary>
 public class UploadDataGame : Minigame
@@ -72,5 +73,14 @@ public class UploadDataGame : Minigame
         _status.text = Step >= 1 ? "Upload Complete" : "Download Complete";
         _done = true;
         Win(0.9f);
+    }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        var b = GetComponentsInChildren<Collider2D>(true).First(c => c.name == "TransferButton");
+        yield return StartCoroutine(TClick((Vector2)b.bounds.center));
+        yield return new WaitForSeconds(Duration + 1.5f);
     }
 }

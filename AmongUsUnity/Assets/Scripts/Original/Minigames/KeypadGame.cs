@@ -58,4 +58,12 @@ public class KeypadGame : Minigame
         foreach (var ch in _code) { Press(ch - '0'); yield return new WaitForSeconds(0.05f); }
         Submit();
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        foreach (var ch in _code) yield return StartCoroutine(TClick(Center(_keys[ch - '0'])));
+        yield return StartCoroutine(TClick(Center(_ok)));
+    }
 }

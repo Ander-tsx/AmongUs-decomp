@@ -97,4 +97,18 @@ public class SimonSaysGame : Minigame
     {
         for (int k = 0; k <= _stage; k++) { yield return new WaitForSeconds(0.08f); if (_done) yield break; Press(_sequence[k]); }
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        float until = Time.time + 60f;
+        while (!_done && Time.time < until)
+        {
+            if (_showing) { yield return null; continue; }
+            int stage = _stage;
+            for (int k = 0; k <= stage && !_done && stage == _stage; k++)
+                yield return StartCoroutine(TClick(Center(Buttons[_sequence[k]].transform)));
+            yield return new WaitForSeconds(0.2f);
+        }
+    }
 }

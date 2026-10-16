@@ -55,4 +55,14 @@ public class DivertPowerMinigame : Minigame
         SetSlider(_target, SliderY.max);
         _done = true; Win(0.4f);
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        var s = _sliders[_target];
+        var from = Center(s);
+        var up = (Vector2)transform.TransformPoint(new Vector3(0, SliderY.max + 0.4f, 0));
+        yield return StartCoroutine(TDrag(2.5f, from, new Vector2(from.x, up.y)));
+    }
 }

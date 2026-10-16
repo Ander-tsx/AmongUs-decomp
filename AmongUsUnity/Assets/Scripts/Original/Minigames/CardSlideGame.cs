@@ -149,4 +149,15 @@ public class CardSlideGame : Minigame
         _t0 = Time.time - dur;
         Evaluate();
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        var start = (Vector2)col.bounds.center;
+        var entry = new Vector2(_minX + 0.1f, _slotY + 0.05f);
+        var end = new Vector2(_maxX + 0.2f, _slotY);
+        // first a slow pull out of the wallet, then a swipe of ~0.5s across the slot
+        yield return StartCoroutine(TDrag(8.4f, start, new Vector2(start.x, _slotY + 0.1f), entry, end));
+    }
 }

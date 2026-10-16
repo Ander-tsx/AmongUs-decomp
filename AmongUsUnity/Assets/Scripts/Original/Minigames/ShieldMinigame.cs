@@ -46,4 +46,12 @@ public class ShieldMinigame : Minigame
     {
         for (int i = 0; i < _on.Length; i++) if (!_on[i]) { yield return new WaitForSeconds(0.08f); Toggle(i); }
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        for (int i = 0; i < Shields.Length; i++)
+            if (!_on[i]) yield return StartCoroutine(TClick(Center(Shields[i].transform)));
+    }
 }

@@ -90,4 +90,17 @@ public class SweepMinigame : Minigame
             yield return null;
         }
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        float until = Time.time + 40f;
+        while (!_done && Time.time < until)
+        {
+            if (_idx < _angle.Length && Mathf.Abs(Wrapped(_idx)) <= 8f && _buttons[_idx] != null)
+                yield return StartCoroutine(TClick(Center(_buttons[_idx])));
+            else yield return null;
+        }
+    }
 }

@@ -59,4 +59,13 @@ public class EmptyGarbageMinigame : Minigame
         _done = true;
         Win(0.4f);
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        var h = (Vector2)_handle.GetComponent<Collider2D>().bounds.center;
+        var low = (Vector2)transform.TransformPoint(new Vector3(0, HandleRange.min - 0.5f, 0));
+        yield return StartCoroutine(TDrag(3f, h, new Vector2(h.x, low.y)));
+    }
 }

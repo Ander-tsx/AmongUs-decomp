@@ -89,8 +89,9 @@ public class WireMinigame : Minigame
             if (MouseUp)
             {
                 int target = -1;
-                var hit = HitAt(m);
-                for (int j = 0; j < RightNodes.Length && hit != null; j++) if (RightNodes[j].hitbox == hit) target = j;
+                // the dragged plug head sits under the pointer, so look through everything at the sockets
+                foreach (var c in AmongUsLan.UiKit.PointAll(m))
+                    for (int j = 0; j < RightNodes.Length; j++) if (RightNodes[j].hitbox == c) target = j;
                 if (target >= 0 && RightNodes[target].WireId == _held.WireId && !_actual.Contains(target)) Connect(_heldIdx, target);
                 else Retract(_heldIdx);
                 _held = null; _heldIdx = -1;
@@ -122,5 +123,13 @@ public class WireMinigame : Minigame
             yield return new WaitForSeconds(0.1f);
             Connect(i, _expected[i]);
         }
+    }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        for (int i = 0; i < LeftNodes.Length; i++)
+            yield return StartCoroutine(TDrag(6f, (Vector2)LeftNodes[i].hitbox.bounds.center, (Vector2)RightNodes[_expected[i]].hitbox.bounds.center));
     }
 }

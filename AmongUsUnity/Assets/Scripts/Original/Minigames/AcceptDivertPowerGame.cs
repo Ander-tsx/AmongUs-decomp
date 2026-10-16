@@ -30,4 +30,7 @@ public class AcceptDivertPowerGame : Minigame
     }
 
     IEnumerator BotSolve() { yield return new WaitForSeconds(0.3f); Flip(); }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay() { yield return new WaitForSeconds(0.3f); yield return StartCoroutine(TClick(Center(_switch))); }
 }

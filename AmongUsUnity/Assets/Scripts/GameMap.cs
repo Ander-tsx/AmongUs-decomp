@@ -154,7 +154,7 @@ namespace AmongUsLan
         void MapClick()
         {
             var wp = (Vector2)_ui.Cam.ScreenToWorldPoint(Input.mousePosition);
-            foreach (var c in Physics2D.OverlapPointAll(wp, 1 << UiKit.Layer))
+            foreach (var c in UiKit.PointAll(wp))
                 if (c.transform.IsChildOf(_map.transform) && c.name == "CloseButton") { CloseMap(); return; }
             if (_mapMode != MapMode.Sabotage || _mapInfected == null) return;
 

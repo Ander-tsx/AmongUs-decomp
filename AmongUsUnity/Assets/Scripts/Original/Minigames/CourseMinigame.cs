@@ -63,4 +63,13 @@ public class CourseMinigame : Minigame
         for (int i = 1; i < _pts.Length; i++) { yield return new WaitForSeconds(0.05f); Ship.localPosition = new Vector3(_pts[i].x, _pts[i].y, Ship.localPosition.z); }
         _done = true; Win(0.4f);
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        var path = new System.Collections.Generic.List<Vector2> { (Vector2)Ship.position };
+        for (int i = 1; i < _pts.Length; i++) path.Add((Vector2)transform.TransformPoint(new Vector3(_pts[i].x, _pts[i].y, 0)));
+        yield return StartCoroutine(TDrag(3f, path.ToArray()));
+    }
 }

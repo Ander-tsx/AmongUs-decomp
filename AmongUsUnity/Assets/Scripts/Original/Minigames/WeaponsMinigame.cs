@@ -54,7 +54,7 @@ public class WeaponsMinigame : Minigame
         if (MouseDown && !Bot)
         {
             Sfx(ShootSound);
-            foreach (var c in Physics2D.OverlapPointAll(m, 1 << AmongUsLan.UiKit.Layer))
+            foreach (var c in AmongUsLan.UiKit.PointAll(m))
             {
                 var r = _rocks.Find(x => !x.Dead && x.T == c.transform);
                 if (r != null) { Explode(r); break; }
@@ -101,4 +101,17 @@ public class WeaponsMinigame : Minigame
     }
 
     IEnumerator Remove(Rock r) { yield return new WaitForSeconds(0.25f); if (r.T != null) Destroy(r.T.gameObject); _rocks.Remove(r); }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        float until = Time.time + 60f;
+        while (!_done && Time.time < until)
+        {
+            Rock target = null;
+            foreach (var r in _rocks) if (!r.Dead && r.T != null && Mathf.Abs(r.T.localPosition.x) < 2.4f && Mathf.Abs(r.T.localPosition.y) < 2.2f) { target = r; break; }
+            if (target != null) yield return StartCoroutine(TClick(Center(target.T)));
+            else yield return null;
+        }
+    }
 }

@@ -66,4 +66,15 @@ public class UnlockManifoldsMinigame : Minigame
             Press(System.Array.IndexOf(_number, n));
         }
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        // a wrong press first must reset, then the right order must win
+        int wrong = System.Array.IndexOf(_number, 2);
+        yield return StartCoroutine(TClick(Center(Buttons[wrong].transform)));
+        for (int n = 1; n <= Buttons.Length; n++)
+            yield return StartCoroutine(TClick(Center(Buttons[System.Array.IndexOf(_number, n)].transform)));
+    }
 }

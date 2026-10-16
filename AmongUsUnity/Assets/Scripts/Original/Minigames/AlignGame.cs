@@ -48,4 +48,13 @@ public class AlignGame : Minigame
         while (Mathf.Abs(y) > 0.02f) { y = Mathf.MoveTowards(y, 0, Time.deltaTime * 3f); SetY(y); yield return null; }
         _done = true; Win(0.4f);
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        var h = (Vector2)col.bounds.center;
+        var mid = (Vector2)transform.TransformPoint(Vector3.zero);
+        yield return StartCoroutine(TDrag(2f, h, new Vector2(h.x, mid.y + (h.y - col.transform.position.y))));
+    }
 }

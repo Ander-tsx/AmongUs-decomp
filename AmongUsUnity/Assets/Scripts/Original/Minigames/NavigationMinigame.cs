@@ -45,4 +45,12 @@ public class NavigationMinigame : Minigame
         while (k < 1f) { k += Time.deltaTime * 2f; t.localPosition = Vector3.Lerp(from, new Vector3(0, 0, from.z), k); yield return null; }
         _done = true; Win(0.4f);
     }
+
+    public override bool HasTest => true;
+    public override IEnumerator TestPlay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        var t = CrossHairImage.transform;
+        yield return StartCoroutine(TDrag(3f, (Vector2)t.position, (Vector2)transform.TransformPoint(Vector3.zero)));
+    }
 }
