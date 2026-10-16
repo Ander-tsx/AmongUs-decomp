@@ -26,6 +26,7 @@ namespace AmongUsLan
         public int Vote = -2;           // -2 none, -1 skip, otherwise player id
         public bool UsedButton;
         public int InVent = -1;
+        public int EmergencyUses;
     }
 
     /// <summary>
@@ -35,10 +36,10 @@ namespace AmongUsLan
     public partial class Game : MonoBehaviour
     {
         // ---- tuning (original Player prefab / default game settings) ----
-        const float MoveSpeed = 2.5f, KillRange = 1.8f, ReportRange = 1.5f;
+        const float BaseSpeed = 2.5f, ReportRange = 1.5f;
         const float BodyColliderRadius = 0.2233912f, BodyColliderOffsetY = -0.3636f;   // root-local (root scale 0.7)
-        const float TaskHoldSeconds = 1.0f, MeetingSeconds = 45f, ResultSeconds = 11.5f, NetRate = 1f / 15f;
-        const int CommonTasks = 1, ShortTasks = 2, LongTasks = 1;
+        const float TaskHoldSeconds = 1.0f, ResultSeconds = 11.5f, NetRate = 1f / 15f;
+        float MeetingSeconds => _cfg.VotingTime;
 
         // ---- state ----
         Phase _phase = Phase.Menu;
@@ -61,7 +62,9 @@ namespace AmongUsLan
         int _meetingCaller = -1, _meetingBody = -1;
         int _endWinner = -1;
         string _endImpostors = "";
-        float KillCooldown = 20f;
+        float KillRange => Settings.KillRanges[Mathf.Clamp(_cfg.KillDistance, 0, 2)];
+        float KillCooldown { get => _cfg.KillCooldown; set => _cfg.KillCooldown = value; }
+        float MoveSpeed => BaseSpeed * _cfg.Speed;
 
         // UI / presentation
         string _nameField = "Player";
@@ -271,6 +274,7 @@ namespace AmongUsLan
                     if (_players.Count >= Palette.Colors.Length) { _peer.Send(from, "REFUSED|Room full"); break; }
                     AddPlayer(from, Clean(a.Length > 1 ? a[1] : "Player"), FreeColor());
                     _peer.Send(from, "WELCOME|" + from);
+                    _peer.Send(from, "CFG|" + _cfg.Encode());
                     BroadcastLobby();
                     break;
                 case "DISCONNECT":
@@ -308,7 +312,7 @@ namespace AmongUsLan
             if (_phase != Phase.Lobby) return;
             var ids = _players.Keys.OrderBy(i => i).ToList();
             int n = ids.Count;
-            _impostorCount = n >= 7 ? 2 : (n >= 2 ? 1 : 0);
+            _impostorCount = _cfg.ImpostorCount(n);
             var shuffled = ids.OrderBy(_ => UnityEngine.Random.value).ToList();
             var imps = new HashSet<int>(shuffled.Take(_impostorCount));
             var rng = new System.Random();
@@ -321,9 +325,10 @@ namespace AmongUsLan
                 p.Tasks.Clear();
                 p.Vote = -2;
                 p.UsedButton = false;
+                p.EmergencyUses = 0;
                 if (!p.Impostor)
                 {
-                    p.Tasks.AddRange(TaskCatalog.Generate(rng, CommonTasks, ShortTasks, LongTasks));
+                    p.Tasks.AddRange(TaskCatalog.Generate(rng, _cfg.CommonTasks, _cfg.ShortTasks, _cfg.LongTasks));
                     _tasksTotal += p.Tasks.Sum(t => t.Steps.Length);
                 }
             }
@@ -372,7 +377,8 @@ namespace AmongUsLan
             else
             {
                 if (p.UsedButton || Vector2.Distance(p.TargetPos, WorldMap.EmergencyButtonPos) > WorldMap.EmergencyButtonRange + 1f) return;
-                p.UsedButton = true;
+                p.EmergencyUses++;
+                if (p.EmergencyUses >= _cfg.Emergencies) p.UsedButton = true;
             }
             foreach (var q in _players.Values) q.Vote = -2;
             Emit("MEET|" + who + "|" + bodyOwner + "|" + (int)MeetingSeconds);
@@ -567,6 +573,9 @@ namespace AmongUsLan
                 case "VENT":
                     ApplyVent(a);
                     break;
+                case "CFG":
+                    ApplyCfg(a[1]);
+                    break;
                 case "COUNT":
                     Play("Panel_TempButton");
                     break;
@@ -720,7 +729,7 @@ namespace AmongUsLan
         {
             _fog.Active = _phase == Phase.Playing && _me != null && _me.Alive && !IntroActive;
             _fog.Target = _me != null ? _me.Go.transform : null;
-            _fog.Radius = _me != null && _me.Impostor ? ImpostorVision : CrewVision * (_sab == SabKind.Lights ? 0.3f : 1f);
+            _fog.Radius = _me != null && _me.Impostor ? ImpostorVision * _cfg.ImpostorVision / 1.5f : CrewVision * _cfg.CrewVision * (_sab == SabKind.Lights ? 0.3f : 1f);
         }
 
         // Task consoles are outlined yellow; the one in reach turns white (as in the original).

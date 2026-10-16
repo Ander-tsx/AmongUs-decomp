@@ -108,7 +108,7 @@ namespace AmongUsLan
             _startUi = _ui.Button(start, HostStartButton, new Vector2(2.6f, 0.65f));
             _startText = _ui.Text(Loc.T("START"), _lobbyHud, new Vector2(0, -h + 0.55f), 0.34f, Color.white, TextAnchor.MiddleCenter, 7, true);
             var use = _ui.Sprite("use", _lobbyHud, new Vector2(w - 0.75f, -h + 0.75f), 5, 0.9f);
-            _ui.Button(use, () => { if (NearWardrobe) ToggleWardrobe(); }, new Vector2(1.1f, 1.1f));
+            _ui.Button(use, () => { if (NearWardrobe) ToggleWardrobe(); else if (NearSettingsPanel) ToggleSettings(); }, new Vector2(1.1f, 1.1f));
             _lobbyUse = use;
             _lobbyHud.gameObject.SetActive(false);
         }
@@ -127,10 +127,10 @@ namespace AmongUsLan
         {
             bool show = _phase == Phase.Lobby && _me != null && Minigame.Instance == null;
             if (_lobbyHud.gameObject.activeSelf != show) _lobbyHud.gameObject.SetActive(show);
-            if (!show) { if (_wardrobe != null) { Destroy(_wardrobe.gameObject); _wardrobe = null; } return; }
+            if (!show) { if (_wardrobe != null) { Destroy(_wardrobe.gameObject); _wardrobe = null; } if (_settingsUi != null) ToggleSettings(); return; }
             float w = _ui.HalfW, h = _ui.HalfH;
             _lobbyUse.transform.localPosition = new Vector2(w - 0.75f, -h + 0.75f);
-            _lobbyUse.color = NearWardrobe ? Color.white : Disabled;
+            _lobbyUse.color = NearWardrobe || NearSettingsPanel ? Color.white : Disabled;
             _startUi.gameObject.SetActive(_isHost);
             _startText.gameObject.SetActive(_isHost);
             if (_isHost)
@@ -141,6 +141,7 @@ namespace AmongUsLan
             string ip = _isHost ? Loc.T("Your LAN address") + ": " + LocalAddress() : Loc.T("Waiting for the host");
             _lobbyInfo.text = ip + "   -   " + _players.Count + "/" + Palette.Colors.Length + " " + Loc.T("players");
             if (Input.GetKeyDown(KeyCode.E) && NearWardrobe) ToggleWardrobe();
+            else if (Input.GetKeyDown(KeyCode.E) && NearSettingsPanel) ToggleSettings();
             if (_isHost && _startCountdown >= 0f)
             {
                 _startCountdown -= Time.deltaTime;
