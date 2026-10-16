@@ -629,6 +629,7 @@ MonoBehaviour:
   ConsoleName: 
   Bot: 0
   Target: 0
+  Arg: 
   XSpan:
     min: -2.5
     max: 2.5

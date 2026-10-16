@@ -54,6 +54,7 @@ MonoBehaviour:
   ConsoleName: 
   Bot: 0
   Target: 0
+  Arg: 
   HandleRange:
     min: -0.65
     max: 0.65

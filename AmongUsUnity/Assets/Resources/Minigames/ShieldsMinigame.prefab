@@ -1518,6 +1518,7 @@ MonoBehaviour:
   ConsoleName: 
   Bot: 0
   Target: 0
+  Arg: 
   OnColor: {r: 1, g: 1, b: 1, a: 1}
   OffColor: {r: 1, g: 0, b: 0, a: 1}
   Shields:

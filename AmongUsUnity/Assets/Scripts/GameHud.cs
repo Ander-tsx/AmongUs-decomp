@@ -42,6 +42,7 @@ namespace AmongUsLan
             _useBarBg = _ui.Rect(_hud, new Vector2(0, -h + 0.5f), new Vector2(2.6f, 0.3f), new Color(0, 0, 0, 0.7f), 4);
             _useBarFill = _ui.Rect(_hud, new Vector2(-1.25f, -h + 0.5f), new Vector2(0.01f, 0.22f), new Color(0.95f, 0.85f, 0.2f), 5);
             _useProgressText = _ui.Text("", _hud, new Vector2(0, -h + 0.9f), 0.25f, Color.white, TextAnchor.MiddleCenter, 6, true);
+            BuildSabotageHud();
             _hud.gameObject.SetActive(false);
         }
 
@@ -64,7 +65,7 @@ namespace AmongUsLan
 
         void UpdateHud()
         {
-            bool show = _phase == Phase.Playing && _me != null;
+            bool show = _phase == Phase.Playing && _me != null && !IntroActive;
             if (_hud.gameObject.activeSelf != show) _hud.gameObject.SetActive(show);
             if (!show) return;
 

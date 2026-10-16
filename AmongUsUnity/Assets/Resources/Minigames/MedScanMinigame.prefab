@@ -135,6 +135,7 @@ MonoBehaviour:
   ConsoleName: 
   Bot: 0
   Target: 0
+  Arg: 
   gauge: {fileID: 290396967383580916}
   ScanDuration: 10
   ScanTimer: 0

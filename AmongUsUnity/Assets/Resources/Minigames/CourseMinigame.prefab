@@ -684,6 +684,7 @@ MonoBehaviour:
   ConsoleName: 
   Bot: 0
   Target: 0
+  Arg: 
   Ship: {fileID: 589879978396753071}
   Destination: {fileID: 0}
   NumPoints: 5

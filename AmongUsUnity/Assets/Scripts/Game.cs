@@ -75,10 +75,11 @@ namespace AmongUsLan
 
         // bot / automated testing (command-line driven)
         bool _bot, _autoHost, _autoJoin, _botTeleport;
+        string _botSab;
         float _botDirTimer;
         Vector2 _botDir;
         float _autoTimer;
-        bool _meetDone, _mgOpened;
+        bool _meetDone, _mgOpened, _sabMenuShown;
         string _shotPath;
         float _shotAt;
 
@@ -126,6 +127,7 @@ namespace AmongUsLan
             _autoHost = args.Contains("-autohost");
             _autoJoin = args.Contains("-autojoin");
             string Arg(string n) { int i = Array.IndexOf(args, n); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
+            _botSab = Arg("-botsab");
             if (Arg("-name") != null) _nameField = Arg("-name");
             if (Arg("-ip") != null) _ipField = Arg("-ip");
             _shotPath = Arg("-shot");
@@ -284,6 +286,9 @@ namespace AmongUsLan
                 case "TASK": HostTask(from, int.Parse(a[1])); break;
                 case "REPORT": HostReport(from, int.Parse(a[1])); break;
                 case "VOTE": HostVote(from, int.Parse(a[1])); break;
+                case "SABOTAGE": HostSabotage(from, a[1], a.Length > 2 ? a[2] : ""); break;
+                case "FIX": HostFix(from, a[1], int.Parse(a[2])); break;
+                case "HOLD": HostHold(from, int.Parse(a[1]), a[2] == "1"); break;
             }
         }
 
@@ -411,9 +416,14 @@ namespace AmongUsLan
             else if (_tasksTotal > 0 && _tasksDone >= _tasksTotal) winner = 0;
             else if (_impostorCount > 0 && imp >= crew) winner = 1;
             if (winner < 0) return false;
+            HostEnd(winner);
+            return true;
+        }
+
+        void HostEnd(int winner)
+        {
             string impNames = string.Join(", ", _players.Values.Where(p => p.Impostor).Select(p => p.Name));
             Emit("END|" + winner + "|" + impNames);
-            return true;
         }
 
         // =====================================================================================
@@ -492,6 +502,8 @@ namespace AmongUsLan
                     if (_me != null && _me.Body != null) _me.Body.linearVelocity = Vector2.zero;
                     _taskHold = 0;
                     if (Minigame.Instance != null) Minigame.Instance.Close(false);
+                    foreach (var kv in _closedDoors) if (kv.Key != null) kv.Key.SetDoorway(true);
+                    _closedDoors.Clear();
                     SetPhase(Phase.Meeting);
                     ShowMeeting();
                     Play(_meetingBody >= 0 ? "Report_BodyFound" : "alarm_emergencymeeting");
@@ -539,10 +551,18 @@ namespace AmongUsLan
                     Debug.Log("[LAN] END winner=" + (_endWinner == 0 ? "crew" : "impostors"));
                     _endImpostors = a.Length > 2 ? a[2] : "";
                     HideMeeting();
+                    ResetSabotage();
                     _endText = _endWinner == 0 ? "¡Ganan los Tripulantes!" : "¡Ganan los Impostores!";
                     SetPhase(Phase.Ended);
                     break;
+                case "SAB":
+                case "SABPROG":
+                case "SABFIXED":
+                case "DOORS":
+                    ApplySabEvent(a);
+                    break;
                 case "LOBBYBACK":
+                    ResetSabotage();
                     HideMeeting();
                     ClearRound();
                     SetPhase(Phase.Lobby);
@@ -587,9 +607,12 @@ namespace AmongUsLan
                 foreach (var p in _players.Values) { p.Alive = true; p.Impostor = false; p.UsedButton = false; }
                 foreach (var i in imps) if (_players.TryGetValue(i, out var ip)) ip.Impostor = true;
             }
+            if (Environment.GetCommandLineArgs().Contains("-forceimp") && _me != null) { _me.Impostor = true; _impostorCount = Mathf.Max(_impostorCount, 1); }
             ResetPositions();
+            ResetSabotage();
             _killCd = 10f;
             SetPhase(Phase.Playing);
+            ShowIntro();
             Play(_me != null && _me.Impostor ? "RoleReveal_Impostor" : "RoleReveal_Crewmate");
         }
 
@@ -665,15 +688,17 @@ namespace AmongUsLan
             UpdateHighlights();
             UpdateFog();
             UpdateHud();
+            UpdateSabotage();
+            UpdateIntro();
             UpdateMeetingUi();
             FollowCamera();
         }
 
         void UpdateFog()
         {
-            _fog.Active = _phase == Phase.Playing && _me != null && _me.Alive;
+            _fog.Active = _phase == Phase.Playing && _me != null && _me.Alive && !IntroActive;
             _fog.Target = _me != null ? _me.Go.transform : null;
-            _fog.Radius = _me != null && _me.Impostor ? ImpostorVision : CrewVision;
+            _fog.Radius = _me != null && _me.Impostor ? ImpostorVision : CrewVision * (_sab == SabKind.Lights ? 0.3f : 1f);
         }
 
         // Task consoles are outlined yellow; the one in reach turns white (as in the original).
@@ -753,6 +778,7 @@ namespace AmongUsLan
 
         void HostTick()
         {
+            HostSabTick();
             if (_phase == Phase.Meeting)
             {
                 _meetingTimer -= Time.deltaTime;
@@ -830,7 +856,7 @@ namespace AmongUsLan
             if (_me == null || _me.Body == null) return;
             Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             if (_bot) input = BotInput();
-            if (Minigame.Instance != null) input = Vector2.zero;
+            if (Minigame.Instance != null || IntroActive) input = Vector2.zero;
             input = Vector2.ClampMagnitude(input, 1f);
             _me.Body.linearVelocity = input * MoveSpeed * (_me.Alive ? 1f : 1.2f);
             _me.Moving = input.sqrMagnitude > 0.01f;
@@ -879,6 +905,7 @@ namespace AmongUsLan
         public void UseNearest()
         {
             if (_phase != Phase.Playing || _me == null || _taskRunning >= 0 || Minigame.Instance != null) return;
+            if (TrySabotageFix()) return;
             if (!_me.Impostor)
             {
                 int idx = NearestTask(out _);
@@ -942,6 +969,18 @@ namespace AmongUsLan
                     _botDirTimer = 0.2f;
                     return _botDir = ((Vector2)any.transform.position - _me.Pos).normalized;
                 }
+                if (_me != null && _phase == Phase.Playing && !_me.Impostor && _sab != SabKind.None && _sab != SabKind.Doors)
+                {
+                    foreach (var sc in SabConsoles())
+                    {
+                        if (_sab == SabKind.Reactor && sc.Idx != _me.Id % 2) continue;
+                        var sc2 = WorldMap.FindConsole(sc.Name, sc.Room);
+                        if (sc2 == null) continue;
+                        if (_botTeleport && _me.Body != null) _me.Body.position = (Vector2)sc2.transform.position + new Vector2(0f, -0.3f);
+                        _botDirTimer = 0.3f;
+                        return _botDir = ((Vector2)sc2.transform.position - _me.Pos).normalized * 0.01f;
+                    }
+                }
                 if (_me != null && _phase == Phase.Playing && !_me.Impostor)
                 {
                     foreach (var t in _myTasks)
@@ -967,6 +1006,7 @@ namespace AmongUsLan
             if (_phase == Phase.Menu && _autoJoin && _peer == null && _autoTimer > 2f) { _autoTimer = 1f; JoinGame(_ipField); }
             if (_isHost && _autoHost && _phase == Phase.Lobby && Environment.GetCommandLineArgs().Contains("-solo") && _autoTimer > 2f) HostStartGame();
             if (_isHost && _autoHost && _phase == Phase.Lobby && _players.Count >= (Environment.GetCommandLineArgs().Contains("-four") ? 4 : 2) && _autoTimer > 8f) HostStartGame();
+            if (_phase == Phase.Playing && _autoTimer > 7f && !_sabMenuShown && Environment.GetCommandLineArgs().Contains("-sabmenu")) { _sabMenuShown = true; _sabCooldown = 0; ToggleSabMenu(); }
             if (_phase == Phase.Playing && _autoTimer > 3f && !_mgOpened)
             {
                 var args = Environment.GetCommandLineArgs();
@@ -978,6 +1018,8 @@ namespace AmongUsLan
                 }
             }
             if (_phase == Phase.Playing && Environment.GetCommandLineArgs().Contains("-meet") && _autoTimer > 4f && !_meetDone) { _meetDone = true; Cmd("REPORT|-1"); }
+            if (_bot && _botSab != null && _phase == Phase.Playing && _me != null && _me.Impostor && _me.Alive && !IntroActive && _sabCooldown <= 0f && _sab == SabKind.None && _autoTimer > 12f)
+                Cmd("SABOTAGE|" + _botSab + "|" + (_botSab == "Doors" ? ((int)SystemTypes.Cafeteria).ToString() : ""));
             if (_bot && _phase == Phase.Meeting && _me != null && _me.Alive && _myVote == -2)
             {
                 _myVote = Environment.GetCommandLineArgs().Contains("-voteself") ? _myId : -1;
@@ -1020,7 +1062,7 @@ namespace AmongUsLan
         void DrawWorldLabels(float s)
         {
             if (_phase != Phase.Lobby && _phase != Phase.Playing) return;
-            if (Minigame.Instance != null) return;
+            if (Minigame.Instance != null || IntroActive) return;
             var st = new GUIStyle(GUI.skin.label) { fontSize = 14, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             foreach (var p in _players.Values)
             {
@@ -1033,6 +1075,18 @@ namespace AmongUsLan
             }
             if (_phase != Phase.Playing || _me == null || _me.Impostor) return;
             st.fontSize = 22;
+            if (_sab != SabKind.None && _sab != SabKind.Doors && _me.Alive)
+            {
+                st.normal.textColor = new Color(1f, 0.2f, 0.2f);
+                foreach (var sc in SabConsoles())
+                {
+                    var sc2 = WorldMap.FindConsole(sc.Name, sc.Room);
+                    if (sc2 == null) continue;
+                    var spos = _cam.WorldToScreenPoint(sc2.transform.position + Vector3.up * 0.5f);
+                    GUI.Label(new Rect(spos.x / s - 20, (Screen.height - spos.y) / s - 14, 40, 28), "!", st);
+                }
+            }
+            st.normal.textColor = new Color(1f, 0.9f, 0.2f);
             st.normal.textColor = new Color(1f, 0.9f, 0.2f);
             foreach (var t in _myTasks)
             {
